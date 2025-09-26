@@ -2,24 +2,13 @@
 
 import React from 'react';
 import Card from '../components/ui/Card';
-import { Layers, MessageSquare, ScanText, User, HelpCircle, Mail, Bell } from 'lucide-react';
+import { Layers, MessageSquare, ScanText, User, HelpCircle } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 export default function Home() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-[#155efcdc]">HOME</h1>
-        <div className="flex items-center gap-4">
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Mail size={18} />
-            문의하기
-          </a>
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Bell size={18} />
-            알림
-          </a>
-        </div>
-      </header>
+      <PageHeader title="HOME" />
 
       <main>
         <section className="mb-10">

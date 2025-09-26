@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">HOME</h1>
+        <h1 className="text-3xl font-bold text-[#155efcdc]">HOME</h1>
         <div className="flex items-center gap-4">
           <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
             <Mail size={18} />

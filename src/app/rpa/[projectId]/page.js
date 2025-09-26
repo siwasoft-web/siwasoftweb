@@ -80,7 +80,7 @@ const StatusBadge = ({ status }) => {
   if (!style) return null;
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${style.bg} ${style.text}`}>
+    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${style.bg} ${style.text}`}>
       {style.icon}
       <span>{style.label}</span>
     </div>
@@ -93,7 +93,7 @@ export default function ProjectDashboardPage() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-600">RPA Analyst</h1>
+        <h1 className="text-3xl font-bold text-[#155efcdc]">RPA Analyst</h1>
         <div className="flex items-center gap-6">
           <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
             <Mail size={18} />
@@ -109,7 +109,7 @@ export default function ProjectDashboardPage() {
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">대시보드</h2>
-        <button className="flex items-center gap-2 bg-blue-600 text-white rounded-md px-4 py-2 text-sm font-semibold hover:bg-blue-700">
+        <button className="flex items-center gap-2 bg-[#3b83f6] hover:bg-[#155efcdc] transition-colors cursor-pointer text-white rounded-full px-4 py-2 text-sm font-semibold">
           <Plus size={16} />
           RPA 생성
         </button>
@@ -130,7 +130,7 @@ export default function ProjectDashboardPage() {
                 <span className="font-semibold">마감일:</span> {task.dueDate}
               </p>
             </div>
-            <button className="bg-[#6b7280] font-bold w-full rounded-b-lg hover:bg-gray-300 transition-colors text-[0.75rem] text-white">
+            <button className="bg-[#6b7280] font-bold w-full rounded-b-lg hover:bg-[#5b6270] transition-colors text-[0.75rem] text-white cursor-pointer">
               {task.action}
             </button>
           </div>

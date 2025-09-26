@@ -38,7 +38,7 @@ export default function RpaPage() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-600">RPA Analyst</h1>
+        <h1 className="text-3xl font-bold text-[#155efcdc]">RPA Analyst</h1>
         <div className="flex items-center gap-6">
           <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
             <Mail size={18} />
@@ -62,7 +62,7 @@ export default function RpaPage() {
             정렬: 등록일 <ChevronDown size={16} />
           </button>
         </div>
-        <button className="flex items-center gap-2 bg-blue-600 text-white rounded-md px-4 py-2 text-sm font-semibold hover:bg-blue-700">
+        <button className="flex items-center gap-2 bg-[#3b83f6] hover:bg-[#155efcdc] transition-colors cursor-pointer text-white rounded-full px-4 py-2 text-sm font-semibold ">
           <Plus size={16} />
           프로젝트 생성
         </button>

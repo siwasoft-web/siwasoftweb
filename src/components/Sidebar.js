@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSidebar } from '@/context/SidebarContext';
 import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true);
+  const { isOpen, setIsOpen } = useSidebar();
   const pathname = usePathname();
 
   const navItems = [

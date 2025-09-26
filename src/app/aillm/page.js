@@ -1,6 +1,6 @@
 export default function Aillm() {
     return (
-      <div>
+      <div className="bg-gray-50/50 min-h-screen p-8">
         ai-llm
       </div>
     );

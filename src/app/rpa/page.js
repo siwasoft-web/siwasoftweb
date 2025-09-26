@@ -2,8 +2,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Mail, Bell, ChevronDown, Plus, X, Layers } from 'lucide-react';
+import { ChevronDown, Plus, X, Layers } from 'lucide-react';
 import Card from '@/components/ui/Card';
+import PageHeader from '@/components/PageHeader';
 
 const projects = [
   {
@@ -37,21 +38,7 @@ const projects = [
 export default function RpaPage() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-[#155efcdc]">RPA Analyst</h1>
-        <div className="flex items-center gap-6">
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Mail size={18} />
-            문의하기
-          </a>
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Bell size={18} />
-            알림 0
-          </a>
-        </div>
-      </header>
-
-      <div className="border-t border-gray-200 mb-6"></div>
+      <PageHeader title="RPA Analyst" />
 
       <div className="flex justify-between items-center mb-6">
         <div className="flex gap-4">

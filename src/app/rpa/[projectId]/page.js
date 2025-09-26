@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Mail, Bell, Plus, CheckCircle, XCircle, AlertCircle, Circle } from 'lucide-react';
+import { Plus, CheckCircle, AlertCircle, Circle } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 const dashboardTasks = [
   {
@@ -92,20 +93,7 @@ export default function ProjectDashboardPage() {
 
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-[#155efcdc]">RPA Analyst</h1>
-        <div className="flex items-center gap-6">
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Mail size={18} />
-            문의하기
-          </a>
-          <a href="#" className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600">
-            <Bell size={18} />
-            알림 0
-          </a>
-        </div>
-      </header>
-      <div className="border-t border-gray-200 mb-6"></div>
+      <PageHeader title="RPA Analyst" />
 
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">대시보드</h2>

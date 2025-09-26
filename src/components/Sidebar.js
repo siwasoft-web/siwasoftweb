@@ -22,7 +22,7 @@ const Sidebar = () => {
   return (
     <div className={`flex flex-col bg-white h-screen p-4 border-r border-gray-200 transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
       <div className="flex items-center justify-between mb-10">
-        <h1 className={`text-2xl font-bold text-blue-600 ${!isOpen && 'hidden'}`}>로고</h1>
+        <h1 className={`text-2xl font-bold text-green-500 ${!isOpen && 'hidden'}`}>시와소프트</h1>
         <button onClick={() => setIsOpen(!isOpen)} className="p-1 rounded-md hover:bg-gray-100 cursor-pointer">
           {isOpen ? <ChevronLeft /> : <ChevronRight />}
         </button>

@@ -54,10 +54,10 @@ export default function AiLlmPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
+    <div className="bg-gray-50 min-h-screen p-8">
       <PageHeader title="AI LLM" />
 
-      <div className="flex h-[calc(100vh-140px)] bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
+      <div className="flex h-[calc(100vh-160px)] bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
         {/* Left Panel: Chat Sessions */}
         <aside className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-200/80 flex flex-col">
           <div className="p-4 border-b border-gray-200/80">

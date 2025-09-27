@@ -58,7 +58,7 @@ export default function AiOcrPage() {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-screen p-6">
+    <div className="bg-gray-50/50 min-h-screen p-8">
       <PageHeader title="AI OCR" />
 
       <div className="max-w-4xl mx-auto">

@@ -153,8 +153,8 @@ export default function InquiryPage() {
   );
 
   return (
-    <div className="bg-gray-50/50 min-h-screen p-6">
-      <PageHeader title="Inquiry" />
+    <div className="bg-gray-50/50 min-h-screen p-8">
+      <PageHeader title="INQUIRY" />
       
       <div className="max-w-5xl mx-auto">
         <div className="border-b border-gray-200 mb-6">

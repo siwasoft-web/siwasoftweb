@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
-import { Plus, CheckCircle, AlertCircle, Circle } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation'; 
+import { Plus, CheckCircle, AlertCircle, Circle, ArrowLeft } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 const dashboardTasks = [
@@ -90,13 +90,20 @@ const StatusBadge = ({ status }) => {
 
 export default function ProjectDashboardPage() {
   const { projectId } = useParams();
+  const router = useRouter();
 
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <PageHeader title="RPA Analyst" />
 
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">대시보드</h2>
+        <div className='flex justify-start items-center'>
+          <button onClick={() => router.back()}
+            className='mr-2 p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer'>
+            <ArrowLeft />
+          </button>
+          <h2 className="text-2xl font-bold text-gray-800">대시보드</h2>
+        </div>
         <button className="flex items-center gap-2 bg-[#3b83f6] hover:bg-[#155efcdc] transition-colors cursor-pointer text-white rounded-full px-4 py-2 text-sm font-semibold">
           <Plus size={16} />
           RPA 생성

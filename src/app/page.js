@@ -7,7 +7,7 @@ import PageHeader from '@/components/PageHeader';
 
 export default function Home() {
   return (
-    <div className="bg-gray-50/50 min-h-screen p-8">
+    <div className="p-8">
       <PageHeader title="HOME" />
 
       <main>

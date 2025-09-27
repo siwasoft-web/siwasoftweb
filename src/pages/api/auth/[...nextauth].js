@@ -4,6 +4,8 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github"
 import GoogleProvider from "next-auth/providers/google"
+import NaverProvider from "next-auth/providers/naver"
+import KakaoProvider from "next-auth/providers/kakao"
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";            // 비밀번호 암호화용
 import { connectDB } from "@/Utils/db";
@@ -13,6 +15,10 @@ import { connectDB } from "@/Utils/db";
 // 자체DB로그인
 const googleId = process.env.GOOGLE_ID || "";
 const googleSecret = process.env.GOOGLE_SECRET || "";
+const naverId = process.env.NAVER_CLIENT_ID || "";
+const naverSecret = process.env.NAVER_CLIENT_SECRET || "";
+const kakaoId = process.env.KAKAO_CLIENT_ID || "";
+const kakaoSecret = process.env.KAKAO_CLIENT_SECRET || "";
 const nextauthSecret = process.env.NEXTAUTH_SECRET || "siwasoftweb";
 const DBName = process.env.DB_NAME || "siwasoftweb";
 
@@ -20,8 +26,18 @@ export const authOptions = {
     providers: [
         GoogleProvider({
             // 구글 로그인
-            clientId: googleId || "",
-            clientSecret: googleSecret || ""
+            clientId: googleId,
+            clientSecret: googleSecret
+        }),
+        NaverProvider({
+            // 네이버 로그인
+            clientId: naverId,
+            clientSecret: naverSecret
+        }),
+        KakaoProvider({
+            // 카카오 로그인
+            clientId: kakaoId,
+            clientSecret: kakaoSecret
         }),
         CredentialsProvider({
             // 자체DB 로그인

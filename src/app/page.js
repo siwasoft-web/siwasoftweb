@@ -13,7 +13,7 @@ export default function Home() {
       <main>
         <section className="mb-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-l-4 border-blue-500">
+            <Card className="border-l-4 border-[#3B86F6]">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-gray-500">2030</p>
@@ -24,7 +24,7 @@ export default function Home() {
               <p className="text-gray-600 mt-4">기업 정보를 확인하신 후, 다음 단계로 넘어 가주세요.</p>
               <a href="#" className="text-blue-600 font-medium mt-6 inline-block">자세히 보기 →</a>
             </Card>
-            <Card className="border-l-4 border-blue-500">
+            <Card className="border-l-4 border-[#3B86F6]">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-gray-500">2030</p>
@@ -35,7 +35,7 @@ export default function Home() {
               <p className="text-gray-600 mt-4">기업 정보를 확인하신 후, 다음 단계로 넘어 가주세요.</p>
               <a href="#" className="text-blue-600 font-medium mt-6 inline-block">자세히 보기 →</a>
             </Card>
-            <Card className="border-l-4 border-blue-500">
+            <Card className="border-l-4 border-[#3B86F6]">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-gray-500">2030</p>

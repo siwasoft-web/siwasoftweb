@@ -52,7 +52,7 @@ const notifications = [
 const statusStyles = {
   완료: {
     icon: <CheckCircle size={16} className="text-white" />,
-    bg: 'bg-blue-500',
+    bg: 'bg-[#3B86F6]',
     text: 'text-white',
     label: '완료',
   },

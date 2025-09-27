@@ -59,7 +59,7 @@ export default function RpaPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {projects.map((project) => (
             <Link href={`/rpa/${project.id}`} key={project.id}>
-              <Card className="h-full flex flex-col justify-between relative border-l-4 border-blue-500 p-5 cursor-pointer hover:shadow-lg transition-shadow">
+              <Card className="h-full flex flex-col justify-between relative border-l-4 border-[#3B86F6] p-5 cursor-pointer hover:shadow-lg transition-shadow">
                 <button 
                   onClick={(e) => {
                     e.preventDefault();

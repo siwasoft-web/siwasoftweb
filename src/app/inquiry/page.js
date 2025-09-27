@@ -102,7 +102,7 @@ export default function InquiryPage() {
               <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
                 <div className="flex-grow">
                   <div className="flex items-center gap-3 mb-2">
-                    <FileText className="text-blue-500" />
+                    <FileText className="text-[#3B86F6]" />
                     <h3 className="text-lg font-bold text-gray-800">{manual.title}</h3>
                   </div>
                   <p className="text-sm text-gray-500 mb-4">{manual.description}</p>
@@ -144,7 +144,7 @@ export default function InquiryPage() {
       onClick={() => setActiveTab(id)}
       className={`px-6 py-3 font-semibold rounded-t-lg transition-colors 
         ${activeTab === id 
-          ? 'bg-white border-b-2 border-blue-500 text-blue-600' 
+          ? 'bg-white border-b-2 border-[#3B86F6] text-blue-600' 
           : 'text-gray-500 hover:text-gray-800'
         }`}
     >

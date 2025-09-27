@@ -63,7 +63,7 @@ export default function AiLlmPage() {
           <div className="p-4 border-b border-gray-200/80">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">Conversations</h2>
-              <button className="flex items-center gap-2 text-sm bg-blue-500 text-white font-semibold px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
+              <button className="flex items-center gap-2 text-sm bg-[#3B86F6] text-white font-semibold px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
                 <Plus size={16} />
                 New Chat
               </button>
@@ -73,7 +73,7 @@ export default function AiLlmPage() {
               <input
                 type="text"
                 placeholder="Search..."
-                className="w-full bg-white border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-white border border-gray-300 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3B86F6]"
               />
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function AiLlmPage() {
             <div>
               <h2 className="font-bold text-lg text-gray-800">RPA Automation Strategy</h2>
             </div>
-            <button className="flex items-center gap-2 text-blue-600 border border-blue-500 rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer">
+            <button className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer">
               <FileUp size={16} />
               Select Document
             </button>
@@ -115,10 +115,10 @@ export default function AiLlmPage() {
             <div className="space-y-6">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex items-start gap-4 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${msg.sender === 'user' ? 'bg-[#3B86F6] text-white' : 'bg-gray-200 text-gray-700'}`}>
                     {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
                   </div>
-                  <div className={`max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
+                  <div className={`max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
                     <p className="text-sm leading-relaxed">{msg.text}</p>
                   </div>
                 </div>
@@ -132,7 +132,7 @@ export default function AiLlmPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your message here..."
-                className="w-full resize-none border border-gray-300 rounded-lg py-3 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full resize-none border border-gray-300 rounded-lg py-3 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-[#3B86F6] text-sm"
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -141,12 +141,12 @@ export default function AiLlmPage() {
                 }}
               />
               <div className="absolute left-3 flex items-center">
-                 <button type="button" className="text-gray-400 hover:text-blue-500 p-2">
+                 <button type="button" className="text-gray-400 hover:text-[#3B86F6] p-2">
                   <Paperclip size={20} />
                 </button>
               </div>
               <div className="absolute right-3 flex items-center">
-                <button type="submit" className={`p-2 rounded-full transition-colors ${input.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'text-gray-400 cursor-not-allowed'}`}>
+                <button type="submit" className={`p-2 rounded-full transition-colors ${input.trim() ? 'bg-[#3B86F6] text-white hover:bg-blue-600' : 'text-gray-400 cursor-not-allowed'}`}>
                   <SendHorizontal size={20} />
                 </button>
               </div>

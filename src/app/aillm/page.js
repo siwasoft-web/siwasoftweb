@@ -141,12 +141,12 @@ export default function AiLlmPage() {
                 }}
               />
               <div className="absolute left-3 flex items-center">
-                 <button type="button" className="text-gray-400 hover:text-[#3B86F6] p-2">
+                 <button type="button" className="text-gray-400 hover:text-[#3B86F6] p-2 cursor-pointer">
                   <Paperclip size={20} />
                 </button>
               </div>
               <div className="absolute right-3 flex items-center">
-                <button type="submit" className={`p-2 rounded-full transition-colors ${input.trim() ? 'bg-[#3B86F6] text-white hover:bg-blue-600' : 'text-gray-400 cursor-not-allowed'}`}>
+                <button type="submit" className={`p-2 rounded-full transition-colors ${input.trim() ? 'bg-[#3B86F6] text-white hover:bg-blue-600 cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}>
                   <SendHorizontal size={20} />
                 </button>
               </div>

@@ -81,12 +81,12 @@ export default function InquiryPage() {
               <div key={index} className="border border-gray-200 rounded-lg bg-white">
                 <button
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full flex justify-between items-center p-5 text-left font-semibold text-gray-800"
+                  className="w-full flex justify-between items-center p-5 text-left font-semibold text-gray-800 cursor-pointer"
                 >
                   <span>{faq.question}</span>
                   <ChevronDown className={`transform transition-transform duration-300 ${openFaq === index ? 'rotate-180' : ''}`} />
                 </button>
-                <div className={`overflow-hidden transition-all duration-500 ${openFaq === index ? 'max-h-96' : 'max-h-0'}`}>
+                <div className={`overflow-hidden transition-all duration-300 ${openFaq === index ? 'max-h-96' : 'max-h-0'}`}>
                   <div className="p-5 border-t border-gray-200">
                     <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
                   </div>
@@ -109,7 +109,7 @@ export default function InquiryPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-200/80">
                   <span>Version {manual.version} ({manual.size})</span>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors cursor-pointer">
                     <Download size={16} />
                     Download
                   </button>
@@ -142,9 +142,9 @@ export default function InquiryPage() {
   const TabButton = ({ id, label }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`px-6 py-3 font-semibold rounded-t-lg transition-colors 
+      className={`px-6 py-3 font-semibold cursor-pointer rounded-t-lg transition-colors 
         ${activeTab === id 
-          ? 'bg-white border-b-2 border-[#3B86F6] text-blue-600' 
+          ? 'bg-transparent border-b-2 border-[#3B86F6] text-blue-600' 
           : 'text-gray-500 hover:text-gray-800'
         }`}
     >

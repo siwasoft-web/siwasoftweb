@@ -54,7 +54,7 @@ export default function AiLlmPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8">
+    <div className="bg-transparent min-h-screen p-8">
       <PageHeader title="AI LLM" />
 
       <div className="flex h-[calc(100vh-160px)] bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">

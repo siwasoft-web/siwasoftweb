@@ -62,7 +62,6 @@ export default function AiLlmPage() {
         <aside className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-200/80 flex flex-col">
           <div className="p-4 border-b border-gray-200/80">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Conversations</h2>
               <button className="flex items-center gap-2 text-sm bg-[#3B86F6] text-white font-semibold px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
                 <Plus size={16} />
                 New Chat

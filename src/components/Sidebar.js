@@ -22,7 +22,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className={`flex flex-col bg-white h-screen p-4 shadow-xl transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
+    <div className={`flex flex-col bg-white h-screen p-4 shadow-xl transition-all duration-300 ${isOpen ? 'w-64 min-w-64' : 'w-20 min-w-20'}`}>
       <div className={`flex items-center ${isOpen ? 'justify-between' : 'justify-center'} mb-10`}>
         {isOpen && <Image src={siwasoftCi} alt="Siwasoft Logo" width={120} height={34} />}
         <button onClick={() => setIsOpen(!isOpen)} className="p-1 rounded-md hover:bg-gray-100 cursor-pointer">

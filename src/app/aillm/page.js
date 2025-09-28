@@ -64,7 +64,7 @@ export default function AiLlmPage() {
             <div className="flex justify-between items-center mb-4">
               <button className="flex items-center gap-2 text-sm bg-[#3B86F6] text-white font-semibold px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors cursor-pointer">
                 <Plus size={16} />
-                New Chat
+                <span className="hidden md:inline">New Chat</span>
               </button>
             </div>
             <div className="relative">
@@ -88,7 +88,7 @@ export default function AiLlmPage() {
                     <div className="flex-grow overflow-hidden">
                       <div className="flex justify-between items-center">
                         <h3 className={`font-semibold text-sm truncate ${index === 0 ? 'text-blue-700' : 'text-gray-800'}`}>{session.title}</h3>
-                        <span className="text-xs text-gray-400 flex-shrink-0">{session.time}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0 hidden md:inline">{session.time}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 truncate">{session.lastMessage}</p>
                     </div>

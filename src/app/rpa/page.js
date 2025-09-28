@@ -16,7 +16,8 @@ const projects = [
   {
     id: 'project-b',
     year: '2024',
-    title: '프로젝트 B',
+    title: '프로젝트 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+    description: '가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하'
   },
   {
     id: 'project-c',
@@ -64,17 +65,17 @@ export default function RpaPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     // 여기에 삭제 로직 추가
-                    console.log(`Delete ${project.title}`);
+                    //console.log(`Delete ${project.title}`);
                   }}
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
                 >
                   <X size={16} />
                 </button>
-                <div>
+                <div className='h-25'>
                   <p className="text-sm text-gray-500 mb-1">{project.year}</p>
-                  <h3 className="text-lg font-bold text-blue-600">{project.title}</h3>
+                  <h3 className="text-lg font-bold text-blue-600 truncate">{project.title}</h3>
                   {project.description && (
-                    <p className="text-xs text-gray-600 mt-2">{project.description}</p>
+                    <p className="text-xs text-gray-600 mt-2 line-clamp-2">{project.description}</p>
                   )}
                 </div>
                 <div className="mt-4">

@@ -16,7 +16,18 @@ export default function AiLlmPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [responseTime, setResponseTime] = useState(null);
+  const [currentThinkingMessage, setCurrentThinkingMessage] = useState(0);
   const messagesEndRef = useRef(null);
+  const thinkingIntervalRef = useRef(null);
+
+  // 동적 "생각 중입니다" 메시지들
+  const thinkingMessages = [
+    '생각 중입니다',
+    '질문을 분석하고 있습니다',
+    '관련 정보를 검색하고 있습니다',
+    '답변을 추론하고 있습니다',
+    '최종 답변을 준비하고 있습니다'
+  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,6 +36,34 @@ export default function AiLlmPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // 컴포넌트 언마운트 시 인터벌 정리
+  useEffect(() => {
+    return () => {
+      if (thinkingIntervalRef.current) {
+        clearInterval(thinkingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // 동적 메시지 업데이트 함수
+  const updateThinkingMessage = () => {
+    setCurrentThinkingMessage(prev => (prev + 1) % thinkingMessages.length);
+  };
+
+  // 로딩 시작 시 메시지 업데이트 시작
+  const startThinkingAnimation = () => {
+    setCurrentThinkingMessage(0);
+    thinkingIntervalRef.current = setInterval(updateThinkingMessage, 10000); // 10초마다 변경
+  };
+
+  // 로딩 종료 시 메시지 업데이트 중지
+  const stopThinkingAnimation = () => {
+    if (thinkingIntervalRef.current) {
+      clearInterval(thinkingIntervalRef.current);
+      thinkingIntervalRef.current = null;
+    }
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -53,11 +92,14 @@ export default function AiLlmPage() {
     setIsLoading(true);
     setResponseTime(null);
 
+    // 동적 메시지 애니메이션 시작
+    startThinkingAnimation();
+
     // "생각 중입니다" 메시지 추가
     const thinkingMessage = {
       id: `thinking-${Date.now()}`,
       sender: 'bot',
-      text: '생각 중입니다',
+      text: thinkingMessages[0],
       isThinking: true,
     };
     setMessages(prev => [...prev, thinkingMessage]);
@@ -116,6 +158,9 @@ export default function AiLlmPage() {
         }
       }
       
+      // 동적 메시지 애니메이션 중지
+      stopThinkingAnimation();
+
       // "생각 중입니다" 메시지 제거하고 실제 응답 추가
       setMessages(prev => {
         const filteredMessages = prev.filter(msg => !msg.isThinking);
@@ -129,6 +174,9 @@ export default function AiLlmPage() {
       });
     } catch (error) {
       console.error('Error:', error);
+      // 동적 메시지 애니메이션 중지
+      stopThinkingAnimation();
+      
       // "생각 중입니다" 메시지 제거하고 에러 메시지 추가
       setMessages(prev => {
         const filteredMessages = prev.filter(msg => !msg.isThinking);
@@ -255,7 +303,7 @@ export default function AiLlmPage() {
                     <div className={`max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
                       {msg.isThinking ? (
                         <div className="flex items-center gap-1">
-                          <span className="text-sm text-gray-600">{msg.text}</span>
+                          <span className="text-sm text-gray-600">{thinkingMessages[currentThinkingMessage]}</span>
                           <div className="flex items-center">
                             <span className="thinking-dot-1 text-gray-600">.</span>
                             <span className="thinking-dot-2 text-gray-600">.</span>

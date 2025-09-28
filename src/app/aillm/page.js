@@ -280,7 +280,7 @@ export default function AiLlmPage() {
               <div>
                 <h2 className="font-bold text-lg text-gray-800">AI Assistant</h2>
                 <p className="text-sm text-gray-500">
-                  {selectedTool === 'chatbot' ? '챗봇 모드' : '임베딩 검색 모드'}
+                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : 'RAG 검색 모드'}
                 </p>
               </div>
               <button 
@@ -414,7 +414,7 @@ export default function AiLlmPage() {
                     <Bot className="text-blue-600" size={24} />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">🤖 챗봇</h4>
+                    <h4 className="font-semibold text-gray-800">🤖 탄소배출량 산정</h4>
                     <p className="text-sm text-gray-600">AI가 질문에 대해 답변을 생성합니다</p>
                   </div>
                 </div>
@@ -437,7 +437,7 @@ export default function AiLlmPage() {
                     <Search className="text-green-600" size={24} />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">🔍 임베딩 검색</h4>
+                    <h4 className="font-semibold text-gray-800">🔍 RAG 검색</h4>
                     <p className="text-sm text-gray-600">문서에서 관련 내용을 검색합니다</p>
                   </div>
                 </div>

@@ -1,0 +1,60 @@
+import { NextResponse } from 'next/server';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { query, tool, with_answer } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+
+    if (!tool || !['chatbot', 'embed'].includes(tool)) {
+      return res.status(400).json({ error: 'Tool must be either "chatbot" or "embed"' });
+    }
+
+    // FastAPI 백엔드 엔드포인트 결정
+    const endpoint = tool === 'chatbot' ? '/chatbot' : '/embed';
+    const url = `http://localhost:8000${endpoint}`;
+
+    // 요청 바디 구성
+    const body = new URLSearchParams({
+      query: query
+    });
+
+    // embed 모드일 때 with_answer 파라미터 추가
+    if (tool === 'embed') {
+      body.append('with_answer', with_answer ? 'true' : 'false');
+    }
+
+    // FastAPI 백엔드로 요청 전송
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // 디버깅을 위한 로깅
+    console.log(`${tool.toUpperCase()} API Response:`, JSON.stringify(data, null, 2));
+    
+    return res.status(200).json(data);
+
+  } catch (error) {
+    console.error('ChatMCP API Error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to get response from backend',
+      details: error.message 
+    });
+  }
+}

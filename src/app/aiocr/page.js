@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search } from 'lucide-react';
+import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search, Image } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
 export default function AiOcrPage() {
@@ -10,7 +10,7 @@ export default function AiOcrPage() {
   const [extractedText, setExtractedText] = useState('');
   const [extractedTable, setExtractedTable] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState('ocr'); // 'ocr' or 'embed'
+  const [selectedTool, setSelectedTool] = useState('ocr'); // 'ocr', 'embed', or 'img'
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -67,7 +67,7 @@ export default function AiOcrPage() {
           const uploadResult = await uploadResponse.json();
           
           // 3. OCR 실행
-          const ocrResponse = await fetch('/api/run-ocr', {
+          const ocrResponse = await fetch('/api/ocrmcp', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -116,12 +116,14 @@ export default function AiOcrPage() {
         <div className="mb-6 flex justify-between items-center">
           <div>
             <h2 className="text-lg font-semibold text-gray-800">
-              {selectedTool === 'ocr' ? 'OCR 모드' : '임베딩 모드'}
+              {selectedTool === 'ocr' ? 'OCR 모드' : selectedTool === 'embed' ? '임베딩 모드' : '이미지 OCR 모드'}
             </h2>
             <p className="text-sm text-gray-500">
               {selectedTool === 'ocr' 
                 ? 'PDF에서 텍스트와 테이블을 추출합니다' 
-                : 'PDF를 임베딩하여 검색 가능하게 만듭니다'
+                : selectedTool === 'embed'
+                ? 'PDF를 임베딩하여 검색 가능하게 만듭니다'
+                : '이미지에서 텍스트를 추출합니다'
               }
             </p>
           </div>
@@ -197,7 +199,7 @@ export default function AiOcrPage() {
               </div>
             )}
             
-            {extractedTable && (
+            {extractedTable && selectedTool !== 'img' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">📊 테이블 추출 결과</h2>
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
@@ -268,6 +270,29 @@ export default function AiOcrPage() {
                   <div>
                     <h4 className="font-semibold text-gray-800">🔍 임베딩</h4>
                     <p className="text-sm text-gray-600">PDF를 임베딩하여 검색 가능하게 만듭니다</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* IMG Tool */}
+              <div
+                onClick={() => {
+                  setSelectedTool('img');
+                  setIsModalOpen(false);
+                }}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  selectedTool === 'img'
+                    ? 'border-[#3B86F6] bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Image className="text-purple-600" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800">🖼️ 이미지 OCR</h4>
+                    <p className="text-sm text-gray-600">이미지에서 텍스트를 추출합니다</p>
                   </div>
                 </div>
               </div>

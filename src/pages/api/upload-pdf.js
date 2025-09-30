@@ -22,19 +22,38 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Base64로 인코딩된 파일 데이터를 디코딩
-    const base64Data = file.replace(/^data:application\/pdf;base64,/, '');
+    // Base64로 인코딩된 파일 데이터를 디코딩 (PDF 또는 이미지)
+    let base64Data, targetDir, fileExtension;
+    
+    if (file.startsWith('data:application/pdf;base64,')) {
+      base64Data = file.replace(/^data:application\/pdf;base64,/, '');
+      targetDir = '/home/siwasoft/siwasoft/mcp/pdf';
+      fileExtension = '.pdf';
+    } else if (file.startsWith('data:image/')) {
+      // 이미지 파일 처리
+      const matches = file.match(/^data:image\/([^;]+);base64,(.+)$/);
+      if (matches) {
+        const imageType = matches[1];
+        base64Data = matches[2];
+        targetDir = '/home/siwasoft/siwasoft/mcp/img';
+        fileExtension = `.${imageType}`;
+      } else {
+        throw new Error('Invalid image format');
+      }
+    } else {
+      throw new Error('Unsupported file format');
+    }
+    
     const buffer = Buffer.from(base64Data, 'base64');
     
     // 원본 파일명 사용 (안전성을 위해 경로 조작 방지)
-    const originalFilename = filename || `upload_${Date.now()}.pdf`;
+    const originalFilename = filename || `upload_${Date.now()}${fileExtension}`;
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
-    const targetPath = path.join('/home/siwasoft/siwasoft/mcp/pdf', safeFilename);
+    const targetPath = path.join(targetDir, safeFilename);
 
-    // PDF 폴더가 없으면 생성
-    const pdfDir = '/home/siwasoft/siwasoft/mcp/pdf';
-    if (!fs.existsSync(pdfDir)) {
-      fs.mkdirSync(pdfDir, { recursive: true });
+    // 대상 폴더가 없으면 생성
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
     // 파일 저장

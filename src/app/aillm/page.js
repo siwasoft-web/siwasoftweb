@@ -107,12 +107,13 @@ export default function AiLlmPage() {
     const startTime = Date.now();
 
     try {
-      const apiEndpoint = selectedTool === 'chatbot' ? '/api/chatbot' : '/api/embed';
-      const requestBody = selectedTool === 'chatbot' 
-        ? { query: currentInput }
-        : { query: currentInput, with_answer: withAnswer };
+      const requestBody = {
+        query: currentInput,
+        tool: selectedTool,
+        with_answer: withAnswer
+      };
 
-      const response = await fetch(apiEndpoint, {
+      const response = await fetch('/api/chatmcp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -127,7 +127,7 @@ export default function AiLlmPage() {
       const data = await response.json();
       
       // 디버깅을 위한 로깅
-      console.log('Frontend received data:', data);
+ 
       
       // 응답 시간 계산
       const endTime = Date.now();
@@ -174,6 +174,9 @@ export default function AiLlmPage() {
       });
     } catch (error) {
       console.error('Error:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+      
       // 동적 메시지 애니메이션 중지
       stopThinkingAnimation();
       
@@ -183,7 +186,7 @@ export default function AiLlmPage() {
         const errorResponse = {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          text: 'Sorry, there was an error processing your request. Please try again.',
+          text: `에러가 발생했습니다: ${error.message}. 서버가 실행 중인지 확인해주세요.`,
         };
         return [...filteredMessages, errorResponse];
       });
@@ -329,10 +332,9 @@ export default function AiLlmPage() {
                 <div className="text-center text-gray-500">
                   <Bot className="mx-auto mb-4 text-gray-300" size={48} />
                   <h3 className="text-lg font-medium mb-2">AI 어시스턴트에 오신 것을 환영합니다!</h3>
-                  <p className="text-sm mb-4">챗봇 모드나 임베딩 검색 모드를 선택하고 질문을 입력해보세요.</p>
+                  <p className="text-sm mb-4">챗봇 모드나 RAG 검색 모드를 선택하고 질문을 입력해보세요.</p>
                   <div className="flex gap-2 justify-center">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">🤖 챗봇</span>
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">🔍 검색</span>
+
                   </div>
                 </div>
               </div>

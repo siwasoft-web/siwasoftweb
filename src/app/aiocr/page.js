@@ -2,18 +2,22 @@
 
 import React, { useState, useCallback } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { UploadCloud, FileText, X, Loader2, Wand2 } from 'lucide-react';
+import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
 export default function AiOcrPage() {
   const [file, setFile] = useState(null);
   const [extractedText, setExtractedText] = useState('');
+  const [extractedTable, setExtractedTable] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTool, setSelectedTool] = useState('ocr'); // 'ocr' or 'embed'
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
       setFile(acceptedFiles[0]);
       setExtractedText('');
+      setExtractedTable('');
     }
   }, []);
 
@@ -29,32 +33,78 @@ export default function AiOcrPage() {
   const handleRemoveFile = () => {
     setFile(null);
     setExtractedText('');
+    setExtractedTable('');
   };
 
-  const handleRunOcr = () => {
+  const handleRunOcr = async () => {
+    if (!file) return;
+    
     setIsLoading(true);
-    // Simulate OCR processing
-    setTimeout(() => {
-      const mockText = `
-        Extracted Text from ${file.name}:
-
-        SIWASOFT Business Plan - Q4 2025
-
-        1. Executive Summary
-           - Expansion of AI-driven RPA solutions.
-           - Focus on LLM and OCR integration for enterprise clients.
-
-        2. Market Analysis
-           - Growing demand for automated document processing.
-           - Competitor landscape shows a gap in user-friendly AI tools.
-
-        3. Financial Projections
-           - Projected revenue growth of 25% QoQ.
-           - Investment in R&D to maintain a competitive edge.
-      `;
-      setExtractedText(mockText);
+    
+    try {
+      // 1. 파일을 Base64로 변환
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target.result;
+          
+          // 2. PDF 업로드
+          const uploadResponse = await fetch('/api/upload-pdf', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              file: base64Data,
+              filename: file.name
+            }),
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error('PDF 업로드 실패');
+          }
+          
+          const uploadResult = await uploadResponse.json();
+          
+          // 3. OCR 실행
+          const ocrResponse = await fetch('/api/run-ocr', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              filename: uploadResult.filename,
+              tool: selectedTool
+            }),
+          });
+          
+          if (!ocrResponse.ok) {
+            throw new Error('OCR 실행 실패');
+          }
+          
+          const result = await ocrResponse.json();
+          
+          // 4. 결과 설정
+          setExtractedText(result.text || '텍스트 추출 결과가 없습니다.');
+          setExtractedTable(result.table || '테이블 추출 결과가 없습니다.');
+          
+        } catch (error) {
+          console.error('OCR 처리 중 오류:', error);
+          setExtractedText(`오류가 발생했습니다: ${error.message}`);
+          setExtractedTable('');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+      
+    } catch (error) {
+      console.error('파일 읽기 오류:', error);
+      setExtractedText(`파일 읽기 오류: ${error.message}`);
+      setExtractedTable('');
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -62,6 +112,27 @@ export default function AiOcrPage() {
       <PageHeader title="AI OCR" />
 
       <div className="max-w-4xl mx-auto">
+        {/* 툴 선택 버튼 */}
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
+              {selectedTool === 'ocr' ? 'OCR 모드' : '임베딩 모드'}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {selectedTool === 'ocr' 
+                ? 'PDF에서 텍스트와 테이블을 추출합니다' 
+                : 'PDF를 임베딩하여 검색 가능하게 만듭니다'
+              }
+            </p>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
+          >
+            <FileUp size={16} />
+            Select Tool
+          </button>
+        </div>
         <div 
           {...getRootProps()} 
           className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-colors duration-300 cursor-pointer
@@ -115,15 +186,110 @@ export default function AiOcrPage() {
           </button>
         </div>
 
-        {extractedText && (
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">텍스트 추출 결과</h2>
-            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedText}</pre>
-            </div>
+        {(extractedText || extractedTable) && (
+          <div className="mt-8 space-y-6">
+            {extractedText && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">📄 텍스트 추출 결과</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedText}</pre>
+                </div>
+              </div>
+            )}
+            
+            {extractedTable && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">📊 테이블 추출 결과</h2>
+                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedTable}</pre>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Tool Selection Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">툴 선택</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* OCR Tool */}
+              <div
+                onClick={() => {
+                  setSelectedTool('ocr');
+                  setIsModalOpen(false);
+                }}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  selectedTool === 'ocr'
+                    ? 'border-[#3B86F6] bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FileText className="text-blue-600" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800">📄 OCR</h4>
+                    <p className="text-sm text-gray-600">PDF에서 텍스트와 테이블을 추출합니다</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Embed Tool */}
+              <div
+                onClick={() => {
+                  setSelectedTool('embed');
+                  setIsModalOpen(false);
+                }}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  selectedTool === 'embed'
+                    ? 'border-[#3B86F6] bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Search className="text-green-600" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800">🔍 임베딩</h4>
+                    <p className="text-sm text-gray-600">PDF를 임베딩하여 검색 가능하게 만듭니다</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-4 py-2 bg-[#3B86F6] text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                선택
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

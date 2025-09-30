@@ -9,7 +9,7 @@ import PageHeader from '@/components/PageHeader';
 const projects = [
   {
     id: 'project-a',
-    year: '2030',
+    year: '2030-01-01',
     title: '프로젝트 A',
     description: '기업 정보를 확인하신 후, 다음 단계로 넘어가 주세요.',
   },

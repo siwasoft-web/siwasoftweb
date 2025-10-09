@@ -10,7 +10,7 @@ export default function AiOcrPage() {
   const [extractedText, setExtractedText] = useState('');
   const [extractedTable, setExtractedTable] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState('ocr'); // 'ocr', 'embed', or 'img'
+  const [selectedTool, setSelectedTool] = useState('pdf'); // 'pdf' or 'img'
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -116,13 +116,11 @@ export default function AiOcrPage() {
         <div className="mb-6 flex justify-between items-center">
           <div>
             <h2 className="text-lg font-semibold text-gray-800">
-              {selectedTool === 'ocr' ? 'OCR 모드' : selectedTool === 'embed' ? '임베딩 모드' : '이미지 OCR 모드'}
+              {selectedTool === 'pdf' ? 'PDF 파서 모드' : '이미지 OCR 모드'}
             </h2>
             <p className="text-sm text-gray-500">
-              {selectedTool === 'ocr' 
+              {selectedTool === 'pdf' 
                 ? 'PDF에서 텍스트와 테이블을 추출합니다' 
-                : selectedTool === 'embed'
-                ? 'PDF를 임베딩하여 검색 가능하게 만듭니다'
                 : '이미지에서 텍스트를 추출합니다'
               }
             </p>
@@ -199,7 +197,7 @@ export default function AiOcrPage() {
               </div>
             )}
             
-            {extractedTable && selectedTool !== 'img' && (
+            {extractedTable && selectedTool === 'pdf' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">📊 테이블 추출 결과</h2>
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
@@ -228,14 +226,14 @@ export default function AiOcrPage() {
             </div>
             
             <div className="space-y-4">
-              {/* OCR Tool */}
+              {/* PDF Parser Tool */}
               <div
                 onClick={() => {
-                  setSelectedTool('ocr');
+                  setSelectedTool('pdf');
                   setIsModalOpen(false);
                 }}
                 className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTool === 'ocr'
+                  selectedTool === 'pdf'
                     ? 'border-[#3B86F6] bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
@@ -245,36 +243,13 @@ export default function AiOcrPage() {
                     <FileText className="text-blue-600" size={24} />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">📄 OCR</h4>
+                    <h4 className="font-semibold text-gray-800">📄 PDF Parser</h4>
                     <p className="text-sm text-gray-600">PDF에서 텍스트와 테이블을 추출합니다</p>
                   </div>
                 </div>
               </div>
 
-              {/* Embed Tool */}
-              <div
-                onClick={() => {
-                  setSelectedTool('embed');
-                  setIsModalOpen(false);
-                }}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTool === 'embed'
-                    ? 'border-[#3B86F6] bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Search className="text-green-600" size={24} />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-800">🔍 임베딩</h4>
-                    <p className="text-sm text-gray-600">PDF를 임베딩하여 검색 가능하게 만듭니다</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* IMG Tool */}
+              {/* IMG OCR Tool */}
               <div
                 onClick={() => {
                   setSelectedTool('img');
@@ -291,7 +266,7 @@ export default function AiOcrPage() {
                     <Image className="text-purple-600" size={24} />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800">🖼️ 이미지 OCR</h4>
+                    <h4 className="font-semibold text-gray-800"> IMG OCR</h4>
                     <p className="text-sm text-gray-600">이미지에서 텍스트를 추출합니다</p>
                   </div>
                 </div>

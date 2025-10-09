@@ -16,8 +16,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Filename is required' });
     }
 
-    if (!tool || !['pdf', 'embed', 'ocr', 'img'].includes(tool)) {
-      return res.status(400).json({ error: 'Tool must be one of: "pdf", "embed", "ocr", "img"' });
+    if (!tool || !['pdf', 'img'].includes(tool)) {
+      return res.status(400).json({ error: 'Tool must be one of: "pdf", "img"' });
     }
 
     // 파일 경로 설정 (툴에 따라 다름)
@@ -64,39 +64,19 @@ export default async function handler(req, res) {
     // 툴에 따른 응답 처리
     switch (tool) {
       case 'pdf':
-        // PDF 파싱만 수행
+        // PDF 파싱: 텍스트와 테이블 추출
+        const pdfResult = readProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
         return res.status(200).json({
           success: true,
           message: 'PDF 파싱이 완료되었습니다',
-          text: 'PDF가 성공적으로 파싱되어 마크다운으로 변환되었습니다.',
-          table: '',
-          fastApiResult: fastApiResult
-        });
-
-      case 'embed':
-        // 임베딩 모드
-        return res.status(200).json({
-          success: true,
-          message: 'PDF가 임베딩되었습니다',
-          text: 'PDF가 성공적으로 임베딩되어 검색 가능한 상태가 되었습니다.',
-          table: '',
-          fastApiResult: fastApiResult
-        });
-
-      case 'ocr':
-        // OCR 모드: 처리된 결과 파일들 읽기
-        const result = readProcessedResults(out_dir || '/home/siwasoft/siwasoft/mcp/out');
-        return res.status(200).json({
-          success: true,
-          message: 'OCR 처리가 완료되었습니다',
-          text: result.text,
-          table: result.table,
+          text: pdfResult.text,
+          table: pdfResult.table,
           fastApiResult: fastApiResult
         });
 
       case 'img':
         // IMG 모드: 이미지 OCR 처리된 결과 파일들 읽기
-        const imgResult = readImageProcessedResults(out_dir || '/home/siwasoft/siwasoft/mcp/out');
+        const imgResult = readImageProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
         return res.status(200).json({
           success: true,
           message: '이미지 OCR 처리가 완료되었습니다',
@@ -118,18 +98,24 @@ export default async function handler(req, res) {
   }
 }
 
-function readProcessedResults(outputDir) {
+function readProcessedResults(outputDir, targetFilename) {
   try {
     let textContent = '';
     let tableContent = '';
 
+    // 파일명에서 확장자 제거하여 폴더명과 매칭
+    const folderName = targetFilename ? path.parse(targetFilename).name : null;
+    
     // PDF 폴더들을 찾기
     const pdfDirs = fs.readdirSync(outputDir).filter(item => {
       const itemPath = path.join(outputDir, item);
       return fs.statSync(itemPath).isDirectory();
     });
 
-    pdfDirs.forEach(pdfDir => {
+    // 특정 파일명이 지정된 경우 해당 폴더만 처리
+    const targetDirs = folderName ? pdfDirs.filter(dir => dir.includes(folderName)) : pdfDirs;
+
+    targetDirs.forEach(pdfDir => {
       const pdfPath = path.join(outputDir, pdfDir);
       
       // page_XXXX 폴더들을 찾기
@@ -171,18 +157,24 @@ function readProcessedResults(outputDir) {
   }
 }
 
-function readImageProcessedResults(outputDir) {
+function readImageProcessedResults(outputDir, targetFilename) {
   try {
     let textContent = '';
     let tableContent = '';
 
+    // 파일명에서 확장자 제거하여 폴더명과 매칭
+    const folderName = targetFilename ? path.parse(targetFilename).name : null;
+    
     // 이미지 폴더들을 찾기
     const imgDirs = fs.readdirSync(outputDir).filter(item => {
       const itemPath = path.join(outputDir, item);
       return fs.statSync(itemPath).isDirectory();
     });
 
-    imgDirs.forEach(imgDir => {
+    // 특정 파일명이 지정된 경우 해당 폴더만 처리
+    const targetDirs = folderName ? imgDirs.filter(dir => dir.includes(folderName)) : imgDirs;
+
+    targetDirs.forEach(imgDir => {
       const imgPath = path.join(outputDir, imgDir);
       
       // img_XXXX.md 파일들을 찾기

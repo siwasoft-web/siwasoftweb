@@ -8,26 +8,26 @@ export default function Setting() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    companyName: '',
-    companyNumber: '',
-    representative: '',
-    businessType: '',
-    businessCategory: '',
-    address: '',
-    phoneNumber: '',
-    email: '',
-    managerName: '',
-    managerPosition: '',
-    managerRole: '',
-    managerPeriod: '',
-    managerContactName: '',
-    managerContactEmail: '',
-    techInfo: '',
-    mainProduct: '',
-    annualRevenue: '',
-    companyStructure: '',
-    capital: '',
-    smallBusiness: '',
+    companyName: 'sample',
+    companyNumber: '123-45-67890',
+    representative: 'name',
+    businessType: 'IT',
+    businessCategory: '33',
+    address: 'sample address',
+    phoneNumber: '02-0000-0000',
+    email: 'sample@google.com',
+    managerName: 'name',
+    managerPosition: '대리',
+    managerRole: 'developer',
+    managerPeriod: '2025.01. ~ 현재',
+    managerContactName: 'name',
+    managerContactEmail: 'email@google.com',
+    techInfo: 'sample',
+    mainProduct: 'sample',
+    annualRevenue: 'sample',
+    companyStructure: 'sample',
+    capital: '10억 원',
+    smallBusiness: 'N',
   });
 
   const handleInputChange = (e) => {
@@ -158,7 +158,7 @@ export default function Setting() {
 
                   {/* 업종(주제) */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">업종(주제)</label>
+                    <label className="text-sm font-medium text-gray-700">업종</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <input
@@ -176,7 +176,7 @@ export default function Setting() {
 
                   {/* 법인 업태번호 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">회사 업태번호</label>
+                    <label className="text-sm font-medium text-gray-700">업태번호</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <input
@@ -194,7 +194,7 @@ export default function Setting() {
 
                   {/* 상사 주소사무 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-                    <label className="text-sm font-medium text-gray-700 pt-2">상사 주소사무</label>
+                    <label className="text-sm font-medium text-gray-700 pt-2">주소</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <textarea
@@ -246,7 +246,7 @@ export default function Setting() {
 
                   {/* 회사 이메일 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">회사 이메일</label>
+                    <label className="text-sm font-medium text-gray-700">담당자 정보</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

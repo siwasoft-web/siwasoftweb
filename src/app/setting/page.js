@@ -9,7 +9,6 @@ export default function Setting() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
-    companyNameEn: '',
     companyNumber: '',
     representative: '',
     businessType: '',
@@ -107,41 +106,23 @@ export default function Setting() {
                     <label className="text-sm font-medium text-gray-700">회사명</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
-                        <div className="flex gap-4">
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              name="companyName"
-                              value={formData.companyName}
-                              onChange={handleInputChange}
-                              placeholder="법인명 (국문)"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              name="companyNameEn"
-                              value={formData.companyNameEn}
-                              onChange={handleInputChange}
-                              placeholder="법인명 (영문)"
-                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                        </div>
+                        <input
+                          type="text"
+                          name="companyName"
+                          value={formData.companyName}
+                          onChange={handleInputChange}
+                          placeholder="회사명"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       ) : (
-                        <div className="flex items-center gap-4">
-                          <span className="text-gray-900">{formData.companyName}</span>
-                          <span className="text-sm text-gray-500">회사명 (국문)</span>
-                          <span className="text-sm text-gray-500 ml-4">회사명 (영문)</span>
-                        </div>
+                        <span className="text-gray-900">{formData.companyName || ''}</span>
                       )}
                     </div>
                   </div>
 
                   {/* 법인등록번호 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">법인등록번호</label>
+                    <label className="text-sm font-medium text-gray-700">사업자등록번호</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <input
@@ -195,7 +176,7 @@ export default function Setting() {
 
                   {/* 법인 업태번호 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">법인 업태번호</label>
+                    <label className="text-sm font-medium text-gray-700">회사 업태번호</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <input
@@ -245,9 +226,9 @@ export default function Setting() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* 법인 연락처 */}
+                  {/* 회사 연락처 */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                    <label className="text-sm font-medium text-gray-700">법인 연락처</label>
+                    <label className="text-sm font-medium text-gray-700">회사 연락처</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <input
@@ -263,9 +244,9 @@ export default function Setting() {
                     </div>
                   </div>
 
-                  {/* 법인 이메일 */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-                    <label className="text-sm font-medium text-gray-700 pt-2">법인 이메일</label>
+                  {/* 회사 이메일 */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <label className="text-sm font-medium text-gray-700">회사 이메일</label>
                     <div className="md:col-span-3">
                       {isEditing ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

@@ -4,13 +4,15 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
-import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogIn, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import siwasoftCi from '@/assets/siwasoft_ci.png';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 const Sidebar = () => {
   const { isOpen, setIsOpen } = useSidebar();
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const navItems = [
     { href: '/', icon: BarChart2, label: 'HOME' },
@@ -43,6 +45,25 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
+      <div className="mt-auto">
+        {session ? (
+          <div
+            onClick={() => signOut()}
+            className={`flex items-center gap-4 p-3 rounded-md cursor-pointer transition-colors bg-red-50 text-red-600 hover:bg-red-100`}
+          >
+            <LogOut size={20} />
+            <span className={`${!isOpen && 'hidden'}`}>Logout</span>
+          </div>
+        ) : (
+          <div
+            onClick={() => signIn()}
+            className={`flex items-center gap-4 p-3 rounded-md cursor-pointer transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100`}
+          >
+            <LogIn size={20} />
+            <span className={`${!isOpen && 'hidden'}`}>Login</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mountain } from 'lucide-react';
+import Image from 'next/image';
+import logo from '@/assets/logo.png';
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -88,24 +89,24 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header/Branding */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <Mountain className="w-8 h-8 text-white mr-2" />
-            <h1 className="text-2xl font-semibold text-white">Siwasoft</h1>
+            <Image src={logo} alt="Siwasoft Logo" width={32} height={32} className="mr-2" />
+            <h1 className="text-2xl font-semibold text-gray-800">Siwasoft</h1>
           </div>
         </div>
 
         {/* Signup Form */}
-        <div className="bg-gray-900 rounded-lg p-8 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white text-center mb-6">회원가입</h2>
+        <div className="bg-white rounded-lg p-8 shadow-xl border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 text-center mb-6">회원가입</h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Field */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                 이름
               </label>
               <input
@@ -115,14 +116,14 @@ export default function SignUp() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="이름"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
 
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 이메일
               </label>
               <input
@@ -132,14 +133,14 @@ export default function SignUp() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="이메일"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 비밀번호
               </label>
               <input
@@ -149,14 +150,14 @@ export default function SignUp() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="비밀번호"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
 
             {/* Confirm Password Field */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
                 비밀번호 확인
               </label>
               <input
@@ -166,19 +167,19 @@ export default function SignUp() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="비밀번호 확인"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
             </div>
 
             {/* Error/Success Messages */}
             {error && (
-              <div className="text-red-400 text-sm text-center">
+              <div className="text-red-600 text-sm text-center">
                 {error}
               </div>
             )}
             {success && (
-              <div className="text-green-400 text-sm text-center">
+              <div className="text-green-600 text-sm text-center">
                 {success}
               </div>
             )}
@@ -187,7 +188,7 @@ export default function SignUp() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? '가입 중...' : '회원가입'}
             </button>
@@ -196,10 +197,10 @@ export default function SignUp() {
           {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700"></div>
+              <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-gray-900 text-gray-400">또는 간편 가입</span>
+              <span className="px-4 bg-white text-gray-500">또는 간편 가입</span>
             </div>
           </div>
 
@@ -229,7 +230,7 @@ export default function SignUp() {
             <button
               onClick={() => handleSocialSignIn('google')}
               disabled={isLoading}
-              className="flex items-center justify-center w-12 h-12 bg-white hover:bg-gray-100 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed mx-auto"
+              className="flex items-center justify-center w-12 h-12 bg-white hover:bg-gray-50 border border-gray-300 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed mx-auto"
             >
               <svg className="w-6 h-6" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -242,9 +243,9 @@ export default function SignUp() {
 
           {/* Social Login Labels */}
           <div className="grid grid-cols-3 gap-4 mt-2 text-center">
-            <span className="text-xs text-gray-400">네이버</span>
-            <span className="text-xs text-gray-400">카카오</span>
-            <span className="text-xs text-gray-400">구글</span>
+            <span className="text-xs text-gray-500">네이버</span>
+            <span className="text-xs text-gray-500">카카오</span>
+            <span className="text-xs text-gray-500">구글</span>
           </div>
         </div>
 
@@ -252,7 +253,7 @@ export default function SignUp() {
         <div className="text-center mt-8">
           <Link 
             href="/auth/signin" 
-            className="text-white hover:text-gray-300 transition-colors duration-200"
+            className="text-blue-600 hover:text-blue-700 transition-colors duration-200"
           >
             이미 계정이 있으신가요? 로그인
           </Link>

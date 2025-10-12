@@ -4,10 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
-import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogIn, LogOut } from 'lucide-react';
+import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import siwasoftCi from '@/assets/siwasoft_ci.png';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 
 const Sidebar = () => {
   const { isOpen, setIsOpen } = useSidebar();
@@ -46,7 +46,7 @@ const Sidebar = () => {
         </ul>
       </nav>
       <div className="mt-auto">
-        {session ? (
+        {session && (
           <div
             onClick={() => signOut({ 
               callbackUrl: '/auth/signin',
@@ -56,14 +56,6 @@ const Sidebar = () => {
           >
             <LogOut size={20} />
             <span className={`${!isOpen && 'hidden'}`}>Logout</span>
-          </div>
-        ) : (
-          <div
-            onClick={() => signIn()}
-            className={`flex items-center gap-4 p-3 rounded-md cursor-pointer transition-colors bg-blue-50 text-blue-600 hover:bg-blue-100`}
-          >
-            <LogIn size={20} />
-            <span className={`${!isOpen && 'hidden'}`}>Login</span>
           </div>
         )}
       </div>

@@ -4,8 +4,9 @@ import React from 'react';
 import Card from '../components/ui/Card';
 import { Layers, MessageSquare, ScanText, User, HelpCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import withAuth from '@/components/withAuth';
 
-export default function Home() {
+function Home() {
   return (
     <div className="p-8">
       <PageHeader title="HOME" />
@@ -104,3 +105,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default withAuth(Home);

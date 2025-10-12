@@ -4,8 +4,9 @@ import React, { useState, useCallback } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search, Image } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import withAuth from '@/components/withAuth';
 
-export default function AiOcrPage() {
+function AiOcrPage() {
   const [file, setFile] = useState(null);
   const [extractedText, setExtractedText] = useState('');
   const [extractedTable, setExtractedTable] = useState('');
@@ -293,4 +294,6 @@ export default function AiOcrPage() {
     </div>
   );
 }
+
+export default withAuth(AiOcrPage);
   

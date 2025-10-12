@@ -7,8 +7,11 @@ import React, { useCallback } from 'react';
 import Particles from "react-tsparticles";
 import { loadSlim } from "tsparticles-slim";
 import Providers from "@/components/Providers";
+import { usePathname } from 'next/navigation';
 
 export default function RootLayout({ children }) {
+  const pathname = usePathname();
+  const isAuthPage = pathname?.startsWith('/auth');
   const particlesInit = useCallback(async engine => {
     console.log(engine);
     await loadSlim(engine);
@@ -97,10 +100,16 @@ export default function RootLayout({ children }) {
                   detectRetina: true,
                 }}
               />
-            <div className="flex relative z-10">
-              <Sidebar />
-              <main className="flex-grow w-full">{children}</main>
-            </div>
+            {isAuthPage ? (
+              <div className="relative z-10">
+                {children}
+              </div>
+            ) : (
+              <div className="flex relative z-10">
+                <Sidebar />
+                <main className="flex-grow w-full">{children}</main>
+              </div>
+            )}
           </SidebarProvider>
         </Providers>
       </body>

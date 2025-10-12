@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronDown, Plus, X, Layers } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import PageHeader from '@/components/PageHeader';
+import withAuth from '@/components/withAuth';
 
 const projects = [
   {
@@ -36,7 +37,7 @@ const projects = [
   },
 ];
 
-export default function RpaPage() {
+function RpaPage() {
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <PageHeader title="RPA Analyst" />
@@ -89,4 +90,6 @@ export default function RpaPage() {
     </div>
   );
 }
+
+export default withAuth(RpaPage);
   

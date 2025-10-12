@@ -3,11 +3,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { Search, Plus, Paperclip, SendHorizontal, FileUp, Bot, User, MessageSquare } from 'lucide-react';
+import withAuth from '@/components/withAuth';
 
 // Chat sessions will be managed dynamically
 const chatSessions = [];
 
-export default function AiLlmPage() {
+function AiLlmPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -489,4 +490,6 @@ export default function AiLlmPage() {
     </>
   );
 }
+
+export default withAuth(AiLlmPage);
   

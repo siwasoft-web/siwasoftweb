@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import { ChevronDown, FileText, Download, Megaphone } from 'lucide-react';
+import withAuth from '@/components/withAuth';
 
 // Mock Data
 const faqs = [
@@ -68,7 +69,7 @@ const notices = [
 ];
 
 
-export default function InquiryPage() {
+function InquiryPage() {
   const [activeTab, setActiveTab] = useState('faq');
   const [openFaq, setOpenFaq] = useState(0);
 
@@ -172,4 +173,6 @@ export default function InquiryPage() {
     </div>
   );
 }
+
+export default withAuth(InquiryPage);
   

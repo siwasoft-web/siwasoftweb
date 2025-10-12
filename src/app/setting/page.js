@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import PageHeader from "@/components/PageHeader";
 import { Pencil } from 'lucide-react';
+import withAuth from '@/components/withAuth';
 
-export default function Setting() {
+function Setting() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -503,3 +504,5 @@ export default function Setting() {
     </div>
   );
 }
+
+export default withAuth(Setting);

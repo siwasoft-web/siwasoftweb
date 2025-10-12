@@ -48,7 +48,10 @@ const Sidebar = () => {
       <div className="mt-auto">
         {session ? (
           <div
-            onClick={() => signOut()}
+            onClick={() => signOut({ 
+              callbackUrl: '/auth/signin',
+              redirect: true 
+            })}
             className={`flex items-center gap-4 p-3 rounded-md cursor-pointer transition-colors bg-red-50 text-red-600 hover:bg-red-100`}
           >
             <LogOut size={20} />

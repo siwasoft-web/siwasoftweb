@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search, Image } from 'lucide-react';
+import { UploadCloud, FileText, X, Loader2, Wand2, FileUp, Bot, Search, Image, Download } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import withAuth from '@/components/withAuth';
 
@@ -12,7 +12,21 @@ function AiOcrPage() {
   const [extractedTable, setExtractedTable] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTool, setSelectedTool] = useState('pdf'); // 'pdf' or 'img'
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.dropdown-container')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -36,6 +50,37 @@ function AiOcrPage() {
     setExtractedText('');
     setExtractedTable('');
   };
+
+  // 텍스트 결과 다운로드
+  const downloadText = () => {
+    if (!extractedText) return;
+    
+    const blob = new Blob([extractedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `extracted_text_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 테이블 결과 다운로드
+  const downloadTable = () => {
+    if (!extractedTable) return;
+    
+    const blob = new Blob([extractedTable], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `extracted_table_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
 
   const handleRunOcr = async () => {
     if (!file) return;
@@ -126,13 +171,68 @@ function AiOcrPage() {
               }
             </p>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
-          >
-            <FileUp size={16} />
-            Select Tool
-          </button>
+          <div className="relative dropdown-container">
+            <button 
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
+            >
+              <FileUp size={16} />
+              {selectedTool === 'pdf' ? 'PDF Parser 모드' : 'IMG OCR 모드'}
+              <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="p-2">
+                  <div
+                    onClick={() => {
+                      setSelectedTool('pdf');
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedTool === 'pdf'
+                        ? 'bg-blue-50 border border-blue-200'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <FileText className="text-blue-600" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-800 text-sm">📄 PDF Parser</h4>
+                        <p className="text-xs text-gray-600">PDF에서 텍스트와 테이블을 추출합니다</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div
+                    onClick={() => {
+                      setSelectedTool('img');
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedTool === 'img'
+                        ? 'bg-blue-50 border border-blue-200'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Image className="text-purple-600" size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-800 text-sm">🖼️ IMG OCR</h4>
+                        <p className="text-xs text-gray-600">이미지에서 텍스트를 추출합니다</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div 
           {...getRootProps()} 
@@ -191,7 +291,16 @@ function AiOcrPage() {
           <div className="mt-8 space-y-6">
             {extractedText && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">📄 텍스트 추출 결과</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-gray-800">📄 텍스트 추출 결과</h2>
+                  <button
+                    onClick={downloadText}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Download size={14} />
+                    텍스트 다운로드
+                  </button>
+                </div>
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
                   <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedText}</pre>
                 </div>
@@ -200,7 +309,16 @@ function AiOcrPage() {
             
             {extractedTable && selectedTool === 'pdf' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">📊 테이블 추출 결과</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold text-gray-800">📊 테이블 추출 결과</h2>
+                  <button
+                    onClick={downloadTable}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Download size={14} />
+                    테이블 다운로드
+                  </button>
+                </div>
                 <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
                   <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedTable}</pre>
                 </div>
@@ -210,87 +328,6 @@ function AiOcrPage() {
         )}
       </div>
 
-      {/* Tool Selection Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-800">툴 선택</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* PDF Parser Tool */}
-              <div
-                onClick={() => {
-                  setSelectedTool('pdf');
-                  setIsModalOpen(false);
-                }}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTool === 'pdf'
-                    ? 'border-[#3B86F6] bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="text-blue-600" size={24} />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-800">📄 PDF Parser</h4>
-                    <p className="text-sm text-gray-600">PDF에서 텍스트와 테이블을 추출합니다</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* IMG OCR Tool */}
-              <div
-                onClick={() => {
-                  setSelectedTool('img');
-                  setIsModalOpen(false);
-                }}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  selectedTool === 'img'
-                    ? 'border-[#3B86F6] bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Image className="text-purple-600" size={24} />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-800"> IMG OCR</h4>
-                    <p className="text-sm text-gray-600">이미지에서 텍스트를 추출합니다</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 px-4 py-2 bg-[#3B86F6] text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                선택
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

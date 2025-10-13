@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import PageHeader from "@/components/PageHeader";
-import { Pencil } from 'lucide-react';
+import styles from './Setting.module.css';
+import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 
 function Setting() {
+  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding'
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     address: '',
@@ -16,15 +19,36 @@ function Setting() {
     managerEmail: '',
     managerPhone: '',
   });
+  const [embedTitle, setEmbedTitle] = useState('');
+  const [embedSources, setEmbedSources] = useState([]);
+  // RAG 컬렉션 상태
+  const [ragCollections, setRagCollections] = useState([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState('');
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [isWorkingRag, setIsWorkingRag] = useState(false);
+  const [ragPdfFile, setRagPdfFile] = useState(null);
+  // 탄소배출량 임베딩 상태
+  const [carbonFile, setCarbonFile] = useState(null);
+  const [isWorkingCarbon, setIsWorkingCarbon] = useState(false);
+
+  // 공통: 안전한 JSON 파서
+  const safeParseJson = async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await response.json();
+    }
+    const text = await response.text();
+    return { success: false, error: text || `HTTP ${response.status}` };
+  };
 
   // 사용자 설정 정보 로드
   const loadUserSettings = async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/user-settings');
-      const data = await response.json();
+      const data = await safeParseJson(response);
       
-      if (data.success) {
+      if (response.ok && data.success) {
         setFormData(data.settings);
         console.log('Loaded settings:', data.settings);
       } else {
@@ -37,9 +61,40 @@ function Setting() {
     }
   };
 
-  // 컴포넌트 마운트 시 설정 정보 로드
+  // 임베딩 소스 로드
+  const loadEmbeddingSources = async () => {
+    try {
+      const res = await fetch('/api/user-embeddings');
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setEmbedSources(data.items);
+      }
+    } catch (err) {
+      console.error('Failed to load embedding sources:', err);
+    }
+  };
+
+  // RAG 컬렉션 로드
+  const loadRagCollections = async () => {
+    try {
+      const res = await fetch('/api/rag-collections');
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setRagCollections(data.items || []);
+        if (!selectedCollectionId && (data.items || []).length > 0) {
+          setSelectedCollectionId(data.items[0]._id || data.items[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('컬렉션 로드 실패:', err);
+    }
+  };
+
+  // 컴포넌트 마운트 시 설정 정보/임베딩 소스 로드
   useEffect(() => {
     loadUserSettings();
+    loadEmbeddingSources();
+    loadRagCollections();
   }, []);
 
   const handleInputChange = (e) => {
@@ -62,9 +117,9 @@ function Setting() {
         body: JSON.stringify(formData)
       });
       
-      const data = await response.json();
+      const data = await safeParseJson(response);
       
-      if (data.success) {
+      if (response.ok && data.success) {
         console.log('Settings saved successfully');
         setIsEditing(false);
         alert('설정이 저장되었습니다.');
@@ -80,14 +135,219 @@ function Setting() {
     }
   };
 
+  // PDF -> 텍스트 추출 후 저장
+  const handleEmbedPdf = async (file) => {
+    setIsUploading(true);
+    try {
+      // 1) Base64 업로드 (AI OCR과 동일 엔드포인트 재사용)
+      const reader = new FileReader();
+      const textFromPdf = await new Promise((resolve, reject) => {
+        reader.onload = async (e) => {
+          try {
+            const uploadResponse = await fetch('/api/upload-pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ file: e.target.result, filename: file.name })
+            });
+            if (!uploadResponse.ok) throw new Error('파일 업로드 실패');
+            const uploadResult = await uploadResponse.json();
+            // 2) OCR 실행하여 텍스트 추출
+            const ocrResponse = await fetch('/api/ocrmcp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename: uploadResult.filename, tool: 'pdf' })
+            });
+            if (!ocrResponse.ok) throw new Error('OCR 실패');
+            const ocrResult = await ocrResponse.json();
+            resolve(ocrResult.text || '');
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // 3) 텍스트를 사용자 임베딩 소스로 저장
+      await saveEmbeddingSource({
+        title: embedTitle || file.name,
+        content: textFromPdf,
+        sourceLabel: file.name
+      });
+      setEmbedTitle('');
+    } catch (err) {
+      console.error('임베딩 처리 실패:', err);
+      alert('임베딩 처리에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // TXT 파일 저장
+  const handleEmbedTxt = async (file) => {
+    setIsUploading(true);
+    try {
+      const text = await file.text();
+      await saveEmbeddingSource({
+        title: embedTitle || file.name,
+        content: text,
+        sourceLabel: file.name
+      });
+      setEmbedTitle('');
+    } catch (err) {
+      console.error('TXT 저장 실패:', err);
+      alert('TXT 저장에 실패했습니다.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const saveEmbeddingSource = async ({ title, content, sourceLabel }) => {
+    if (!content || content.trim().length === 0) {
+      alert('내용이 비어 있습니다.');
+      return;
+    }
+    const res = await fetch('/api/user-embeddings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, sourceLabel })
+    });
+    const data = await safeParseJson(res);
+    if (res.ok && data.success) {
+      await loadEmbeddingSources();
+      alert('임베딩 소스가 저장되었습니다.');
+    } else {
+      throw new Error(data.error || '임베딩 저장 실패');
+    }
+  };
+
+  const handleDeleteSource = async (id) => {
+    if (!confirm('해당 임베딩 소스를 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/api/user-embeddings?id=${id}`, { method: 'DELETE' });
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setEmbedSources((prev) => prev.filter((s) => s._id !== id));
+      }
+    } catch (err) {
+      console.error('삭제 실패:', err);
+    }
+  };
+
+  // 컬렉션 생성
+  const handleCreateCollection = async () => {
+    const name = newCollectionName.trim();
+    if (!name) {
+      alert('컬렉션 이름을 입력하세요.');
+      return;
+    }
+    try {
+      setIsWorkingRag(true);
+      const res = await fetch('/api/rag-collections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '컬렉션 생성 실패');
+      setNewCollectionName('');
+      await loadRagCollections();
+      alert('컬렉션이 생성되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('컬렉션 생성에 실패했습니다.');
+    } finally {
+      setIsWorkingRag(false);
+    }
+  };
+
+  // 컬렉션 삭제
+  const handleDeleteCollection = async () => {
+    if (!selectedCollectionId) {
+      alert('삭제할 컬렉션을 선택하세요.');
+      return;
+    }
+    if (!confirm('선택한 컬렉션을 삭제하시겠습니까?')) return;
+    try {
+      setIsWorkingRag(true);
+      const res = await fetch(`/api/rag-collections?id=${selectedCollectionId}`, { method: 'DELETE' });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '컬렉션 삭제 실패');
+      await loadRagCollections();
+      setSelectedCollectionId('');
+      alert('컬렉션이 삭제되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('컬렉션 삭제에 실패했습니다.');
+    } finally {
+      setIsWorkingRag(false);
+    }
+  };
+
+  // PDF RAG 임베딩 실행
+  const handleRunRagEmbedding = async () => {
+    if (!ragPdfFile) {
+      alert('PDF 파일을 선택하세요.');
+      return;
+    }
+    if (!selectedCollectionId) {
+      alert('컬렉션을 선택하세요.');
+      return;
+    }
+    try {
+      setIsWorkingRag(true);
+      const form = new FormData();
+      form.append('file', ragPdfFile);
+      const res = await fetch(`/api/rag-collections/${selectedCollectionId}/embed-pdf`, {
+        method: 'POST',
+        body: form
+      });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '임베딩 실패');
+      setRagPdfFile(null);
+      alert('PDF RAG 임베딩이 완료되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('PDF RAG 임베딩에 실패했습니다.');
+    } finally {
+      setIsWorkingRag(false);
+    }
+  };
+
+  // 탄소배출량 임베딩 실행
+  const handleRunCarbonEmbedding = async () => {
+    if (!carbonFile) {
+      alert('파일을 선택하세요.');
+      return;
+    }
+    try {
+      setIsWorkingCarbon(true);
+      const form = new FormData();
+      form.append('file', carbonFile);
+      const res = await fetch('/api/carbon-embeddings', {
+        method: 'POST',
+        body: form
+      });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '임베딩 실패');
+      setCarbonFile(null);
+      alert('탄소배출량 임베딩이 완료되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('탄소배출량 임베딩에 실패했습니다.');
+    } finally {
+      setIsWorkingCarbon(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="bg-gray-50/50 min-h-screen p-8">
+      <div className={styles.page}>
         <PageHeader title="Setting" />
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">설정 정보를 불러오는 중...</p>
+        <div className={styles.card}>
+          <div className={styles.content + " " + styles.centerText}>
+            <div className={styles.spinner}></div>
+            <p>설정 정보를 불러오는 중...</p>
           </div>
         </div>
       </div>
@@ -95,28 +355,45 @@ function Setting() {
   }
 
   return (
-    <div className="bg-gray-50/50 min-h-screen p-8">
+    <div className={styles.page}>
       <PageHeader title="Setting" />
 
-      <div className="bg-white rounded-lg shadow-sm">
-        <div className="p-8">
+      <div className={styles.card}>
+        {/* 탭 헤더 */}
+        <div className={styles.cardHeader}>
+          <div className={styles.tabs}>
+            <button
+              onClick={() => setActiveTab('company')}
+              className={`${styles.tabButton} ${activeTab==='company' ? styles.tabButtonActive : ''}`}
+            >
+              회사정보
+            </button>
+            <button
+              onClick={() => setActiveTab('embedding')}
+              className={`${styles.tabButton} ${activeTab==='embedding' ? styles.tabButtonActive : ''}`}
+            >
+              임베딩
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.content}>
+          {activeTab === 'company' && (
+          <div>
           {/* 회사 정보 섹션 */}
-          <div className="mb-8">
+          <div className={styles.stackY6}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">회사 정보</h3>
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
+              <h3 className={styles.titleLg}>회사 정보</h3>
+              <button onClick={() => setIsEditing(!isEditing)} className={styles.editBtn}>
                 <Pencil size={16} />
                 <span>편집</span>
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className={styles.stackY6}>
               {/* 회사명 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <label className="text-sm font-medium text-gray-700">회사명</label>
+              <div className={styles.gridRow4}>
+                <label className={styles.labelText}>회사명</label>
                 <div className="md:col-span-3">
                   {isEditing ? (
                     <input
@@ -125,17 +402,17 @@ function Setting() {
                       value={formData.companyName}
                       onChange={handleInputChange}
                       placeholder="회사명을 입력하세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={styles.input}
                     />
                   ) : (
-                    <span className="text-gray-900">{formData.companyName || '입력된 정보가 없습니다'}</span>
+                    <span className={styles.mutedText}>{formData.companyName || '입력된 정보가 없습니다'}</span>
                   )}
                 </div>
               </div>
 
               {/* 주소 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-                <label className="text-sm font-medium text-gray-700 pt-2">주소</label>
+              <div className={styles.gridRow4}>
+                <label className={styles.labelText}>주소</label>
                 <div className="md:col-span-3">
                   {isEditing ? (
                     <textarea
@@ -144,10 +421,10 @@ function Setting() {
                       onChange={handleInputChange}
                       rows="2"
                       placeholder="회사 주소를 입력하세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={styles.textarea}
                     />
                   ) : (
-                    <span className="text-gray-900">{formData.address || '입력된 정보가 없습니다'}</span>
+                    <span className={styles.mutedText}>{formData.address || '입력된 정보가 없습니다'}</span>
                   )}
                 </div>
               </div>
@@ -155,22 +432,19 @@ function Setting() {
           </div>
 
           {/* 담당자 정보 섹션 */}
-          <div className="border-t border-gray-200 pt-8">
+          <div className={styles.dividerTop}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">담당자 정보</h3>
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
+              <h3 className={styles.titleLg}>담당자 정보</h3>
+              <button onClick={() => setIsEditing(!isEditing)} className={styles.editBtn}>
                 <Pencil size={16} />
                 <span>편집</span>
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className={styles.stackY6}>
               {/* 담당자 성함 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <label className="text-sm font-medium text-gray-700">담당자 성함</label>
+              <div className={styles.gridRow4}>
+                <label className={styles.labelText}>담당자 성함</label>
                 <div className="md:col-span-3">
                   {isEditing ? (
                     <input
@@ -179,17 +453,17 @@ function Setting() {
                       value={formData.managerName}
                       onChange={handleInputChange}
                       placeholder="담당자 성함을 입력하세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={styles.input}
                     />
                   ) : (
-                    <span className="text-gray-900">{formData.managerName || '입력된 정보가 없습니다'}</span>
+                    <span className={styles.mutedText}>{formData.managerName || '입력된 정보가 없습니다'}</span>
                   )}
                 </div>
               </div>
 
               {/* 담당자 이메일 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <label className="text-sm font-medium text-gray-700">담당자 이메일</label>
+              <div className={styles.gridRow4}>
+                <label className={styles.labelText}>담당자 이메일</label>
                 <div className="md:col-span-3">
                   {isEditing ? (
                     <input
@@ -198,17 +472,17 @@ function Setting() {
                       value={formData.managerEmail}
                       onChange={handleInputChange}
                       placeholder="담당자 이메일을 입력하세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={styles.input}
                     />
                   ) : (
-                    <span className="text-gray-900">{formData.managerEmail || '입력된 정보가 없습니다'}</span>
+                    <span className={styles.mutedText}>{formData.managerEmail || '입력된 정보가 없습니다'}</span>
                   )}
                 </div>
               </div>
 
               {/* 담당자 연락처 */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <label className="text-sm font-medium text-gray-700">담당자 연락처</label>
+              <div className={styles.gridRow4}>
+                <label className={styles.labelText}>담당자 연락처</label>
                 <div className="md:col-span-3">
                   {isEditing ? (
                     <input
@@ -217,10 +491,10 @@ function Setting() {
                       value={formData.managerPhone}
                       onChange={handleInputChange}
                       placeholder="담당자 연락처를 입력하세요"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={styles.input}
                     />
                   ) : (
-                    <span className="text-gray-900">{formData.managerPhone || '입력된 정보가 없습니다'}</span>
+                    <span className={styles.mutedText}>{formData.managerPhone || '입력된 정보가 없습니다'}</span>
                   )}
                 </div>
               </div>
@@ -229,28 +503,130 @@ function Setting() {
 
           {/* 저장 버튼 */}
           {isEditing && (
-            <div className="mt-8 flex justify-end gap-4">
-              <button
-                onClick={() => setIsEditing(false)}
-                disabled={isSaving}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+            <div className={styles.actions}>
+              <button onClick={() => setIsEditing(false)} disabled={isSaving} className={`${styles.btn} ${styles.btnGhost}`}>
                 취소
               </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
+              <button onClick={handleSave} disabled={isSaving} className={`${styles.btn} ${styles.btnPrimary}`}>
                 {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    저장 중...
-                  </>
+                  '저장 중...'
                 ) : (
                   '저장'
                 )}
               </button>
+            </div>
+          )}
+          </div>
+          )}
+
+          {activeTab === 'embedding' && (
+            <div>
+              <h3 className={styles.pageTitle}>문서 임베딩</h3>
+              {/* 1. PDF RAG 임베딩 */}
+              <div className={styles.section}>
+                <h4 className={styles.sectionTitle}>1) PDF RAG 임베딩</h4>
+                <div className={styles.stackY4}>
+                  {/* 파일 선택 */}
+                  <div className={styles.fileRow}>
+                    <input
+                      id="rag-pdf-file"
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={(e) => setRagPdfFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label htmlFor="rag-pdf-file" className={`${styles.fileButton} ${isWorkingRag ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                      파일 선택
+                    </label>
+                    <span className={styles.muted}>{ragPdfFile ? ragPdfFile.name : '선택된 파일 없음'}</span>
+                  </div>
+
+                  {/* 컬렉션 선택/생성/삭제 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>컬렉션 선택</label>
+                    <div className={styles.fields}>
+                      <select
+                        value={selectedCollectionId}
+                        onChange={(e) => setSelectedCollectionId(e.target.value)}
+                        className={styles.select}
+                      >
+                        <option value="">컬렉션을 선택하세요</option>
+                        {ragCollections.map((c) => (
+                          <option key={c._id || c.id} value={c._id || c.id}>{c.name || c.title}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleDeleteCollection}
+                        disabled={isWorkingRag || !selectedCollectionId}
+                        className={styles.dangerOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                      >
+                        컬렉션 삭제
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.row}>
+                    <label className={styles.label}>컬렉션 생성</label>
+                    <div className={styles.fields}>
+                      <input
+                        type="text"
+                        value={newCollectionName}
+                        onChange={(e) => setNewCollectionName(e.target.value)}
+                        placeholder="새 컬렉션 이름"
+                        className={styles.createInput}
+                      />
+                      <button
+                        onClick={handleCreateCollection}
+                        disabled={isWorkingRag}
+                        className={styles.primaryOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                      >
+                        <Plus size={14} />
+                        생성
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 임베딩 실행 */}
+                  <div>
+                    <button
+                      onClick={handleRunRagEmbedding}
+                      disabled={isWorkingRag}
+                      className={styles.runButton}
+                    >
+                      {isWorkingRag ? '임베딩 실행 중...' : '임베딩 실행'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 탄소배출량 임베딩 */}
+              <div className={styles.sectionDivider}>
+                <h4 className={styles.sectionTitle}>2) 탄소배출량 임베딩</h4>
+                <div className={styles.stackY4}>
+                  <div className={styles.fileRow}>
+                    <input
+                      id="carbon-file"
+                      type="file"
+                      accept=".pdf,.txt,text/plain,application/pdf"
+                      onChange={(e) => setCarbonFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label htmlFor="carbon-file" className={`${styles.fileButton} ${isWorkingCarbon ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                      파일 선택
+                    </label>
+                    <span className={styles.muted}>{carbonFile ? carbonFile.name : '선택된 파일 없음'}</span>
+                  </div>
+                  <div>
+                    <button
+                      onClick={handleRunCarbonEmbedding}
+                      disabled={isWorkingCarbon}
+                      className={styles.runButton}
+                    >
+                      {isWorkingCarbon ? '임베딩 실행 중...' : '임베딩 실행'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

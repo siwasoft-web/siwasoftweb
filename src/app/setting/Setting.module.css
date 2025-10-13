@@ -1,0 +1,410 @@
+/* ---------------------------------------------
+   설정(Setting) 페이지 전용 CSS Module
+   - Tailwind 유틸을 모두 제거하고 모듈화한 스타일입니다.
+   - 섹션별로 한국어 주석을 추가해 유지보수성을 높였습니다.
+---------------------------------------------- */
+
+/* 폼 라인(라벨 + 필드) 레이아웃 */
+.row
+{
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 3rem; /* matches form spacing */
+}
+
+@media (min-width: 768px) {
+  .row {
+    grid-template-columns: 80px 1fr; /* label fixed, field flexible */
+  }
+}
+
+/* 폼 라벨 텍스트 */
+.label
+{
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;     /* font-medium */
+  color: #374151;       /* text-gray-700 */
+}
+
+@media (min-width: 768px) {
+  .label {
+    text-align: right;
+  }
+}
+
+/* 폼 필드 래퍼(드롭다운/버튼 등 수평 정렬) */
+.fields
+{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* gap-2 */
+}
+
+/* 공통 셀렉트(드롭다운) 스타일 */
+.select
+{
+  padding: 0.5rem 0.5rem; /* py-2 px-2 */
+  font-size: 0.875rem;
+  border: 1px solid #D1D5DB; /* border-gray-300 */
+  border-radius: 0.375rem;    /* rounded-md */
+}
+
+/* 경고(삭제) 아웃라인 버튼 */
+.dangerOutline
+{
+  padding: 0.5rem 0.75rem; /* py-2 px-3 */
+  font-size: 0.875rem;
+  color: #DC2626;            /* text-red-600 */
+  border: 1px solid #FECACA; /* border-red-200 */
+  border-radius: 0.375rem;
+}
+
+.dangerOutline:hover
+{
+  background: #FEF2F2;       /* hover:bg-red-50 */
+}
+
+.dangerOutline:disabled
+{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 컬렉션 생성 입력창 */
+.createInput
+{
+  width: 14rem;              /* w-56 */
+  padding: 0.5rem 0.75rem;   /* py-2 px-3 */
+  font-size: 0.875rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.375rem;
+}
+
+/* 기본(생성) 아웃라인 버튼 */
+.primaryOutline
+{
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #2563EB;            /* text-blue-600 */
+  border: 1px solid #BFDBFE; /* border-blue-200 */
+  border-radius: 0.375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;             /* gap-1.5 */
+}
+
+.primaryOutline:hover
+{
+  background: #EFF6FF;       /* hover:bg-blue-50 */
+}
+
+.primaryOutline:disabled
+{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 임베딩 섹션 타이틀/간격 */
+.section
+{
+  margin-bottom: 2.5rem; /* mb-10 */
+}
+
+.sectionTitle
+{
+  font-size: 1rem;      /* text-md */
+  font-weight: 600;     /* font-semibold */
+  color: #1F2937;       /* text-gray-800 */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+/* 임베딩 페이지 상단 타이틀 */
+.pageTitle
+{
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+/* 파일 업로드 행(라벨/설명 수평 정렬) */
+.fileRow
+{
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* gap-4 */
+}
+
+/* 파일선택 버튼
+   - 크기 조절은 padding, font-size, width 속성으로 변경하세요.
+   - 예) 더 크게: padding: 0.625rem 1.25rem; font-size: 0.95rem;
+        고정 너비: width: 120px; display: inline-flex; justify-content: center;
+*/
+.fileButton
+{
+  /* 크기를 절반 수준으로 축소 */
+  padding: 0.3rem 0.7rem; /* py-1 px-2 */
+  font-size: 0.75rem;     /* text-xs~sm 사이 */
+  border: 1px solid #E5E7EB; /* border */
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.fileButton:hover
+{
+  background: #F9FAFB; /* hover:bg-gray-50 */
+}
+
+/* 설명/서브 텍스트(회색) */
+.muted
+{
+  font-size: 0.875rem;
+  color: #4B5563; /* text-gray-600 */
+}
+
+/* 임베딩 실행(Primary) 버튼 */
+.runButton
+{
+  padding: 0.3rem 1.0rem; /* py-2 px-6 */
+  background: #17cfcf;   /* bg-blue-600 */
+  color: #ffffff;        /* text-white */
+  border: none;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s ease; /* transition-colors */
+}
+
+.runButton:hover
+{
+  background: #1D4ED8;   /* hover:bg-blue-700 */
+}
+
+.runButton:disabled
+{
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 섹션 구분선(상단 경계 + 패딩) */
+.sectionDivider
+{
+  border-top: 1px solid #E5E7EB; /* border-gray-200 */
+  padding-top: 2rem;             /* pt-8 */
+}
+
+/* 수직 간격 스택(space-y-4 대체) */
+.stackY4 > * + *
+{
+  margin-top: 1rem; /* 16px */
+}
+
+/* ---- Generic page/layout styles (migrated from inline/Tailwind) ---- */
+/* 페이지 배경/패딩 */
+.page
+{
+  background: rgba(249,250,251,0.5); /* bg-gray-50/50 */
+  min-height: 100vh;
+  padding: 2rem; /* p-8 */
+}
+
+/* 카드 컨테이너 */
+.card
+{
+  background: #FFFFFF;
+  border-radius: 0.5rem; /* rounded-lg */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06); /* shadow-sm */
+}
+
+/* 카드 상단(탭 헤더) */
+.cardHeader
+{
+  border-bottom: 1px solid #E5E7EB; /* border-b border-gray-200 */
+  padding: 1rem 1rem 0 1rem; /* px-4 pt-4 */
+}
+
+/* 탭 버튼 래퍼 */
+.tabs
+{
+  display: flex;
+  gap: 0.5rem; /* gap-2 */
+}
+
+/* 탭 버튼(비활성) */
+.tabButton
+{
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  border-radius: 0.375rem 0.375rem 0 0; /* rounded-t-md */
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500;    /* font-medium */
+  color: #6B7280;      /* text-gray-500 */
+}
+
+.tabButton:hover
+{
+  color: #374151; /* hover:text-gray-700 */
+}
+
+/* 탭 버튼(활성) */
+.tabButtonActive
+{
+  color: #2563EB;               /* text-blue-600 */
+  border-bottom: 2px solid #2563EB; /* border-b-2 border-blue-600 */
+}
+
+/* 카드 컨텐츠 영역 패딩 */
+.content
+{
+  padding: 2rem; /* p-8 */
+}
+
+/* 섹션 타이틀(회사정보/담당자정보) */
+.titleLg
+{
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600;
+  color: #1F2937; /* text-gray-800 */
+}
+
+/* 편집 버튼(우상단) */
+.editBtn
+{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #2563EB;
+}
+
+.editBtn:hover
+{
+  color: #1D4ED8;
+}
+
+/* 수직 간격 스택(space-y-6 대체) */
+.stackY6 > * + *
+{
+  margin-top: 1.5rem; /* space-y-6 */
+}
+
+/* 라벨/필드 4열 그리드(모바일 1열) */
+.gridRow4
+{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem; /* gap-4 */
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .gridRow4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* md:grid-cols-4 */
+  }
+}
+
+/* 공통 라벨 텍스트 */
+.labelText
+{
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* 공통 input */
+.input
+{
+  width: 100%;
+  padding: 0.5rem 1rem; /* px-4 py-2 */
+  border: 1px solid #D1D5DB;
+  border-radius: 0.375rem;
+}
+
+/* 공통 textarea */
+.textarea
+{
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.375rem;
+}
+
+/* 본문 강조 텍스트(진한 회색) */
+.mutedText
+{
+  color: #111827; /* text-gray-900 equivalent */
+}
+
+/* 상단 구분선 + 여백 */
+.dividerTop
+{
+  border-top: 1px solid #E5E7EB;
+  padding-top: 2rem;
+}
+
+/* 하단 액션 버튼 영역 */
+.actions
+{
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+/* 공통 버튼 */
+.btn
+{
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+/* 서브(유령) 버튼 */
+.btnGhost
+{
+  border: 1px solid #D1D5DB;
+  color: #374151;
+}
+
+.btnGhost:hover
+{
+  background: #F9FAFB;
+}
+
+/* 기본(파란) 버튼 */
+.btnPrimary
+{
+  background: #2563EB;
+  color: #FFFFFF;
+}
+
+.btnPrimary:hover
+{
+  background: #1D4ED8;
+}
+
+/* 로딩 스피너 */
+.spinner
+{
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border-width: 0.25rem;
+  border-style: solid;
+  border-color: transparent;
+  border-bottom-color: #2563EB;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 중앙 정렬 안내 텍스트 */
+.centerText
+{
+  text-align: center;
+  color: #4B5563;
+  margin-top: 1rem;
+}
+

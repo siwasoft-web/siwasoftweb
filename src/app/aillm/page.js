@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
-import { Search, Plus, Paperclip, SendHorizontal, FileUp, Bot, User, MessageSquare, Edit2, Trash2, MoreVertical } from 'lucide-react';
+import { Search, Plus, Paperclip, SendHorizontal, FileUp, Bot, User, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
 
@@ -553,7 +553,7 @@ function AiLlmPage() {
                     onClick={() => selectSession(session._id)}
                   >
                     <div className="flex items-start gap-3">
-                      <MessageSquare className={`mt-1 flex-shrink-0 ${
+                      <Bot className={`mt-1 flex-shrink-0 ${
                         currentSessionId === session._id ? 'text-gray-600' : 'text-gray-400'
                       }`} size={20} />
                       <div className="flex-grow overflow-hidden">
@@ -623,7 +623,7 @@ function AiLlmPage() {
               </ul>
             ) : (
               <div className="p-4 text-center text-gray-500">
-                <MessageSquare className="mx-auto mb-2 text-gray-300" size={32} />
+                <Bot className="mx-auto mb-2 text-gray-300" size={32} />
                 <p className="text-sm">
                   {searchQuery ? '검색 결과가 없습니다' : '새로운 대화를 시작해보세요'}
                 </p>

@@ -549,43 +549,47 @@ function AiLlmPage() {
                             autoFocus
                           />
                         ) : (
-                          <div>
-                            <div className="flex justify-between items-center">
-                              <h3 className={`font-semibold text-sm truncate ${
+                          <div className="w-full">
+                            {/* 제목, 날짜, 편집/삭제 버튼이 같은 줄에 */}
+                            <div className="flex items-center justify-between gap-2">
+                              {/* 제목 */}
+                              <h3 className={`font-semibold text-sm truncate flex-1 ${
                                 currentSessionId === session._id ? 'text-blue-700' : 'text-gray-800'
                               }`}>{session.title}</h3>
-                              <span className="text-xs text-gray-400 flex-shrink-0 hidden md:inline">
+                              
+                              {/* 날짜 */}
+                              <span className="text-xs text-gray-400 flex-shrink-0">
                                 {new Date(session.updatedAt).toLocaleDateString()}
                               </span>
+                              
+                              {/* 편집/삭제 버튼 */}
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingSessionId(session._id);
+                                    setEditingTitle(session.title);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                  title="편집"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteSession(session._id);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                  title="삭제"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
                         <p className="text-xs text-gray-500 mt-1 truncate">{session.lastMessage}</p>
-                      </div>
-                    </div>
-                    
-                    {/* 편집/삭제 버튼 */}
-                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingSessionId(session._id);
-                            setEditingTitle(session.title);
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSession(session._id);
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
                       </div>
                     </div>
                   </li>

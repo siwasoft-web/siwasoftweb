@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
-import { BarChart2, Zap, BrainCircuit, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { BarChart2, Zap, Bot, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import siwasoftCi from '@/assets/siwasoft_ci.png';
 import { useSession, signOut } from 'next-auth/react';
@@ -17,7 +17,7 @@ const Sidebar = () => {
   const navItems = [
     { href: '/', icon: BarChart2, label: 'HOME' },
     { href: '/rpa', icon: Zap, label: 'RPA' },
-    { href: '/aillm', icon: BrainCircuit, label: 'AI LLM' },
+    { href: '/aillm', icon: Bot, label: 'AI LLM' },
     { href: '/aiocr', icon: ScanSearch, label: 'AI OCR' },
     { href: '/inquiry', icon: HelpCircle, label: 'INQUIRY' },
     { href: '/setting', icon: Settings, label: 'SETTING' },

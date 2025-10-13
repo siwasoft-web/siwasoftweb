@@ -280,6 +280,27 @@ function AiLlmPage() {
     };
   }, [isDropdownOpen]);
 
+  // 자동 제목 생성 함수
+  const generateAutoTitle = (input) => {
+    // 입력 텍스트 정리
+    let title = input.trim();
+    
+    // 특수문자 제거 및 정리
+    title = title.replace(/[^\w\s가-힣]/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    // 길이 조정
+    if (title.length > 25) {
+      title = title.substring(0, 25) + '...';
+    }
+    
+    // 빈 문자열인 경우 기본 제목
+    if (!title) {
+      title = '새 대화';
+    }
+    
+    return title;
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (input.trim() === '' || isLoading) return;
@@ -293,6 +314,13 @@ function AiLlmPage() {
         console.error('Failed to create session');
         return;
       }
+    }
+
+    // 첫 메시지 전, 세션 제목을 즉시 업데이트 (ChatGPT 스타일)
+    if (!hasStarted && input.trim()) {
+      const newTitle = generateAutoTitle(input);
+      setChatSessions((prev) => prev.map((s) => (s._id === sessionId ? { ...s, title: newTitle } : s)));
+      updateSessionTitle(sessionId, newTitle);
     }
 
     // 첫 메시지인 경우 환영 메시지 추가
@@ -410,9 +438,7 @@ function AiLlmPage() {
       
       // 첫 번째 사용자 메시지인 경우 제목 자동 생성
       if (messages.length === 1) { // 환영 메시지만 있는 상태에서 첫 사용자 메시지
-        const autoTitle = currentInput.length > 30 
-          ? currentInput.substring(0, 30) + '...' 
-          : currentInput;
+        const autoTitle = generateAutoTitle(currentInput);
         await updateSessionTitle(sessionId, autoTitle);
       }
     } catch (error) {
@@ -522,13 +548,13 @@ function AiLlmPage() {
                   <li
                     key={session._id}
                     className={`group p-3 rounded-lg cursor-pointer transition-colors relative ${
-                      currentSessionId === session._id ? 'bg-blue-100' : 'hover:bg-gray-200/50'
+                      currentSessionId === session._id ? 'bg-gray-200/50' : 'hover:bg-gray-200/50'
                     }`}
                     onClick={() => selectSession(session._id)}
                   >
                     <div className="flex items-start gap-3">
                       <MessageSquare className={`mt-1 flex-shrink-0 ${
-                        currentSessionId === session._id ? 'text-blue-600' : 'text-gray-400'
+                        currentSessionId === session._id ? 'text-gray-600' : 'text-gray-400'
                       }`} size={20} />
                       <div className="flex-grow overflow-hidden">
                         {editingSessionId === session._id ? (
@@ -647,8 +673,7 @@ function AiLlmPage() {
                             <Bot className="text-blue-600" size={20} />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-800 text-sm">🤖 탄소배출량 산정</h4>
-                            <p className="text-xs text-gray-600">AI가 질문에 대해 답변을 생성합니다</p>
+                            <h4 className="font-semibold text-gray-800 text-sm"> 탄소배출량 산정</h4>
                           </div>
                         </div>
                       </div>
@@ -669,8 +694,7 @@ function AiLlmPage() {
                             <Search className="text-green-600" size={20} />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-800 text-sm">🔍 RAG 검색</h4>
-                            <p className="text-xs text-gray-600">문서에서 관련 내용을 검색합니다</p>
+                            <h4 className="font-semibold text-gray-800 text-sm">RAG 검색</h4>
                           </div>
                         </div>
                       </div>

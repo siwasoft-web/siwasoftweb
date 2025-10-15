@@ -33,6 +33,11 @@ function Setting() {
   // Git RAG 임베딩 상태
   const [gitId, setGitId] = useState('');
   const [isWorkingGit, setIsWorkingGit] = useState(false);
+  const [selectedGitCollectionId, setSelectedGitCollectionId] = useState('');
+  const [newGitCollectionName, setNewGitCollectionName] = useState('');
+  const [gitCollections, setGitCollections] = useState([]);
+  const [savedGitSources, setSavedGitSources] = useState([]);
+  const [selectedSavedGitId, setSelectedSavedGitId] = useState('');
   // Documents 탭 상태
   const [pdfRagDocuments, setPdfRagDocuments] = useState([]);
   const [carbonDocuments, setCarbonDocuments] = useState([]);
@@ -47,6 +52,16 @@ function Setting() {
     }
     const text = await response.text();
     return { success: false, error: text || `HTTP ${response.status}` };
+  };
+
+  // Git ID 마스킹 표시 (요청 규칙)
+  const maskGitId = (value) => {
+    if (!value) return '';
+    const len = value.length;
+    if (len === 1) return '*';
+    if (len === 2) return value.slice(0, 1) + '*';
+    if (len === 3) return value.slice(0, 1) + '**';
+    return value.slice(0, 3) + '***';
   };
 
   // 사용자 설정 정보 로드
@@ -136,11 +151,46 @@ function Setting() {
     }
   };
 
+  // Git용 컬렉션 로드 (emd2)
+  const loadGitCollections = async () => {
+    try {
+      const res = await fetch('/api/rag-collections?chroma=' + encodeURIComponent('/home/siwasoft/siwasoft/emd2'));
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        const collections = data.items || [];
+        setGitCollections(collections);
+        if (!selectedGitCollectionId && collections.length > 0) {
+          setSelectedGitCollectionId(collections[0]._id || collections[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Git 컬렉션 로드 실패:', err);
+    }
+  };
+
+  // 저장된 Git ID 로드
+  const loadSavedGitSources = async () => {
+    try {
+      const res = await fetch('/api/user-git-sources');
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setSavedGitSources(data.items || []);
+        if (!selectedSavedGitId && (data.items || []).length > 0) {
+          setSelectedSavedGitId(data.items[0]._id);
+        }
+      }
+    } catch (err) {
+      console.error('Git 소스 로드 실패:', err);
+    }
+  };
+
   // 컴포넌트 마운트 시 설정 정보/임베딩 소스 로드
   useEffect(() => {
     loadUserSettings();
     loadEmbeddingSources();
-    loadRagCollections();
+    loadRagCollections(); // PDF/기본 컬렉션
+    loadGitCollections(); // Git(emd2) 컬렉션
+    loadSavedGitSources(); // 저장된 Git ID 목록
   }, []);
 
   const handleInputChange = (e) => {
@@ -334,6 +384,105 @@ function Setting() {
     }
   };
 
+  // Git 컬렉션 생성
+  const handleCreateGitCollection = async () => {
+    const name = newGitCollectionName.trim();
+    if (!name) {
+      alert('컬렉션 이름을 입력하세요.');
+      return;
+    }
+    try {
+      setIsWorkingGit(true);
+      console.log('Git 컬렉션 생성 요청:', { name });
+      
+      const res = await fetch('/api/rag-collections?chroma=' + encodeURIComponent('/home/siwasoft/siwasoft/emd2'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await safeParseJson(res);
+      console.log('Git 컬렉션 생성 응답:', data);
+      
+      if (!res.ok || !data.success) throw new Error(data.error || '컬렉션 생성 실패');
+      setNewGitCollectionName('');
+      await loadGitCollections();
+      alert('컬렉션이 생성되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('컬렉션 생성에 실패했습니다.');
+    } finally {
+      setIsWorkingGit(false);
+    }
+  };
+
+  // Git 컬렉션 삭제
+  const handleDeleteGitCollection = async () => {
+    if (!selectedGitCollectionId) {
+      alert('삭제할 컬렉션을 선택하세요.');
+      return;
+    }
+    if (!confirm('선택한 컬렉션을 삭제하시겠습니까?')) return;
+    try {
+      setIsWorkingGit(true);
+      const res = await fetch(`/api/rag-collections?id=${selectedGitCollectionId}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '컬렉션 삭제 실패');
+      await loadGitCollections();
+      setSelectedGitCollectionId('');
+      alert('컬렉션이 삭제되었습니다.');
+    } catch (err) {
+      console.error(err);
+      alert('컬렉션 삭제에 실패했습니다.');
+    } finally {
+      setIsWorkingGit(false);
+    }
+  };
+
+  // Git ID 저장
+  const handleSaveGitId = async () => {
+    const value = gitId.trim();
+    if (!value) {
+      alert('Git ID를 입력하세요.');
+      return;
+    }
+    try {
+      setIsWorkingGit(true);
+      const res = await fetch('/api/user-git-sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gitId: value, label: value })
+      });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '저장 실패');
+      setGitId('');
+      await loadSavedGitSources();
+    } catch (err) {
+      console.error(err);
+      alert('Git ID 저장에 실패했습니다.');
+    } finally {
+      setIsWorkingGit(false);
+    }
+  };
+
+  // Git ID 삭제
+  const handleDeleteSavedGitId = async (id) => {
+    if (!id) return;
+    if (!confirm('저장된 Git ID를 삭제하시겠습니까?')) return;
+    try {
+      setIsWorkingGit(true);
+      const res = await fetch(`/api/user-git-sources?id=${id}`, { method: 'DELETE' });
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) throw new Error(data.error || '삭제 실패');
+      await loadSavedGitSources();
+      if (selectedSavedGitId === id) setSelectedSavedGitId('');
+    } catch (err) {
+      console.error(err);
+      alert('삭제에 실패했습니다.');
+    } finally {
+      setIsWorkingGit(false);
+    }
+  };
+
   // PDF RAG 임베딩 실행
   const handleRunRagEmbedding = async () => {
     if (!ragPdfFile) {
@@ -408,8 +557,15 @@ function Setting() {
 
   // Git RAG 임베딩 실행
   const handleRunGitEmbedding = async () => {
-    if (!gitId.trim()) {
-      alert('Git ID를 입력하세요.');
+    const value = (selectedSavedGitId
+      ? (savedGitSources.find(s => s._id === selectedSavedGitId)?.gitId || '')
+      : gitId).trim();
+    if (!value) {
+      alert('Git ID를 입력하거나 저장된 항목을 선택하세요.');
+      return;
+    }
+    if (!selectedGitCollectionId) {
+      alert('컬렉션을 선택하세요.');
       return;
     }
     try {
@@ -422,7 +578,8 @@ function Setting() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          git_id: gitId.trim(),
+          git_id: value,
+          collection: selectedGitCollectionId,
           type: 'git'
         })
       });
@@ -432,7 +589,7 @@ function Setting() {
         throw new Error(data.error || 'Git RAG 임베딩 실패');
       }
       
-      setGitId('');
+      // 저장 사용 시 입력값은 유지하지 않아도 됨
       alert('Git RAG 임베딩이 완료되었습니다.');
     } catch (err) {
       console.error('Git RAG 임베딩 실패:', err);
@@ -789,12 +946,94 @@ function Setting() {
                         type="text"
                         value={gitId}
                         onChange={(e) => setGitId(e.target.value)}
-                        placeholder="GitHub 사용자명 또는 저장소 URL을 입력하세요"
-                        className={styles.input}
+                        placeholder="사용자명을 입력하세요"
+                        className={`${styles.input} ${styles.gitInput}`}
                         disabled={isWorkingGit}
                       />
+                      <button
+                        onClick={handleSaveGitId}
+                        disabled={isWorkingGit || !gitId.trim()}
+                        className={styles.primaryOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                      >
+                        저장
+                      </button>
                     </div>
                   </div>
+
+                  {/* 저장된 Git ID 목록 */}
+                  <div className={styles.row}>
+                    <label className={`${styles.label} ${styles.noWrap}`}>저장된 Git ID</label>
+                    <div className={styles.fields}>
+                      <select
+                        value={selectedSavedGitId}
+                        onChange={(e) => setSelectedSavedGitId(e.target.value)}
+                        className={`${styles.select} ${styles.savedGitSelect}`}
+                        disabled={isWorkingGit}
+                      >
+                        <option value="">선택 안 함</option>
+                        {savedGitSources.map((s) => (
+                          <option key={s._id} value={s._id}>{maskGitId(s.gitId)}</option>
+                        ))}
+                      </select>
+                      {selectedSavedGitId && (
+                        <button
+                          onClick={() => handleDeleteSavedGitId(selectedSavedGitId)}
+                          disabled={isWorkingGit}
+                          className={styles.dangerOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Git 컬렉션 선택/생성/삭제 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>컬렉션 선택</label>
+                    <div className={styles.fields}>
+                      <select
+                        value={selectedGitCollectionId}
+                        onChange={(e) => setSelectedGitCollectionId(e.target.value)}
+                        className={styles.select}
+                        disabled={isWorkingGit}
+                      >
+                        <option value="">컬렉션을 선택하세요</option>
+                        {gitCollections.map((c) => (
+                          <option key={c._id || c.id} value={c._id || c.id}>{c.name || c.title}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleDeleteGitCollection}
+                        disabled={isWorkingGit || !selectedGitCollectionId}
+                        className={styles.dangerOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                      >
+                        컬렉션 삭제
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.row}>
+                    <label className={styles.label}>컬렉션 생성</label>
+                    <div className={styles.fields}>
+                      <input
+                        type="text"
+                        value={newGitCollectionName}
+                        onChange={(e) => setNewGitCollectionName(e.target.value)}
+                        placeholder="새 컬렉션 이름"
+                        className={styles.createInput}
+                        disabled={isWorkingGit}
+                      />
+                      <button
+                        onClick={handleCreateGitCollection}
+                        disabled={isWorkingGit}
+                        className={styles.primaryOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                      >
+                        <Plus size={14} />
+                        생성
+                      </button>
+                    </div>
+                  </div>
+
                   <div>
                     <button
                       onClick={handleRunGitEmbedding}

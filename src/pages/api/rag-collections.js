@@ -17,11 +17,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      console.log('Fetching collections from:', `${EMB_API_BASE}/collections`);
+      const chroma = req.query.chroma;
+      const url = chroma ? `${EMB_API_BASE}/collections?chroma=${encodeURIComponent(chroma)}` : `${EMB_API_BASE}/collections`;
+      console.log('Fetching collections from:', url);
       
       try {
         // FastAPI 서버에서 컬렉션 목록 조회
-        const response = await fetch(`${EMB_API_BASE}/collections`);
+        const response = await fetch(url);
         console.log('FastAPI response status:', response.status);
         console.log('FastAPI response headers:', response.headers);
         
@@ -82,8 +84,10 @@ export default async function handler(req, res) {
       // 컬렉션 이름 그대로 사용
       const collectionName = name.trim();
       
+      const chroma = req.query.chroma;
       console.log('컬렉션 생성 요청:', {
-        name: collectionName
+        name: collectionName,
+        chroma
       });
 
       const response = await fetch(`${EMB_API_BASE}/collections`, {
@@ -93,6 +97,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           name: collectionName,
+          chroma: chroma || undefined,
           metadata: { "hnsw:space": "cosine" }
         })
       });
@@ -138,7 +143,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Collection ID is required' });
       }
 
-      const response = await fetch(`${EMB_API_BASE}/collections?name=${encodeURIComponent(id)}`, {
+      const chroma = req.query.chroma;
+      const deleteUrl = chroma
+        ? `${EMB_API_BASE}/collections?name=${encodeURIComponent(id)}&chroma=${encodeURIComponent(chroma)}`
+        : `${EMB_API_BASE}/collections?name=${encodeURIComponent(id)}`;
+
+      const response = await fetch(deleteUrl, {
         method: 'DELETE'
       });
 

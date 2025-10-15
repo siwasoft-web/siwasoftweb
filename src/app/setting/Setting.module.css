@@ -41,6 +41,12 @@
   gap: 0.5rem; /* gap-2 */
 }
 
+/* 줄바꿈 방지 라벨 */
+.noWrap
+{
+  white-space: nowrap;
+}
+
 /* 공통 셀렉트(드롭다운) 스타일 */
 .select
 {
@@ -317,6 +323,20 @@
   padding: 0.5rem 1rem; /* px-4 py-2 */
   border: 1px solid #D1D5DB;
   border-radius: 0.375rem;
+}
+
+/* Git ID 입력 전용 크기 */
+.gitInput
+{
+  width: 240px;
+  min-width: 160px;
+}
+
+/* 저장된 Git ID 셀렉트 전용 크기 */
+.savedGitSelect
+{
+  width: auto;
+  min-width: 280px;
 }
 
 /* 공통 textarea */

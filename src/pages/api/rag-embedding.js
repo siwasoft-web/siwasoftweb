@@ -8,7 +8,7 @@ const GIT_API_BASE = process.env.GIT_API_BASE || 'http://localhost:8001';
 const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/pdf';
 
 // Git RAG 임베딩 처리 함수
-async function handleGitEmbedding(req, res, git_id) {
+async function handleGitEmbedding(req, res, { git_id, collection }) {
   if (!git_id || !git_id.trim()) {
     return res.status(400).json({ 
       success: false, 
@@ -23,7 +23,11 @@ async function handleGitEmbedding(req, res, git_id) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ git_id: git_id.trim() })
+      body: JSON.stringify({ 
+        git_id: git_id.trim(),
+        collection_name: collection || 'github_repos',
+        chroma_path: '/home/siwasoft/siwasoft/emd2'
+      })
     });
 
     const data = await response.json();
@@ -148,7 +152,7 @@ export default async function handler(req, res) {
     
     // Git RAG 임베딩 처리
     if (type === 'git' || git_id) {
-      return await handleGitEmbedding(req, res, git_id);
+      return await handleGitEmbedding(req, res, { git_id, collection });
     }
     
     // PDF RAG 임베딩 처리 (기본값)

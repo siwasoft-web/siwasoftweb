@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { file, collection } = req.body;
+    const { file, filename, collection } = req.body;
     
     if (!file) {
       return res.status(400).json({ success: false, error: 'File is required' });
@@ -27,14 +27,28 @@ export default async function handler(req, res) {
     const base64Data = file.replace(/^data:application\/pdf;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
-    // 파일명 생성 (타임스탬프 + 원본파일명)
-    const timestamp = Date.now();
-    const filename = `upload_${timestamp}.pdf`;
-    const filepath = path.join(TARGET_DIR, filename);
+    // 원본 파일명 사용 (제공되지 않은 경우에만 타임스탬프 사용)
+    let originalFilename = filename || `upload_${Date.now()}.pdf`;
+    
+    // 파일명이 .pdf로 끝나지 않으면 .pdf 추가
+    if (!originalFilename.toLowerCase().endsWith('.pdf')) {
+      originalFilename += '.pdf';
+    }
     
     // TARGET_DIR이 존재하는지 확인하고 없으면 생성
     if (!fs.existsSync(TARGET_DIR)) {
       fs.mkdirSync(TARGET_DIR, { recursive: true });
+    }
+    
+    // 파일명 중복 방지
+    let filepath = path.join(TARGET_DIR, originalFilename);
+    let counter = 1;
+    while (fs.existsSync(filepath)) {
+      const nameWithoutExt = path.parse(originalFilename).name;
+      const ext = path.parse(originalFilename).ext;
+      const newFilename = `${nameWithoutExt}_${counter}${ext}`;
+      filepath = path.join(TARGET_DIR, newFilename);
+      counter++;
     }
     
     // 파일 저장

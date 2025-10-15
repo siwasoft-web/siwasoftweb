@@ -364,6 +364,7 @@ function Setting() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           file: base64File,
+          filename: ragPdfFile.name,
           collection: selectedCollectionId
         })
       });

@@ -25,8 +25,22 @@ export default async function handler(req, res) {
         console.log('FastAPI response status:', response.status);
         console.log('FastAPI response headers:', response.headers);
         
-        const data = await response.json();
-        console.log('FastAPI response data:', data);
+        const responseText = await response.text();
+        console.log('FastAPI response (텍스트):', responseText);
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('FastAPI response data:', data);
+          console.log('조회된 컬렉션들:', data.collections);
+        } catch (parseError) {
+          console.error('JSON 파싱 오류:', parseError);
+          console.error('응답 텍스트:', responseText);
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Invalid JSON response from FastAPI: ' + responseText.substring(0, 100)
+          });
+        }
         
         if (data.ok) {
           // 모든 컬렉션을 표시 (필터링 제거)
@@ -67,6 +81,10 @@ export default async function handler(req, res) {
 
       // 컬렉션 이름 그대로 사용
       const collectionName = name.trim();
+      
+      console.log('컬렉션 생성 요청:', {
+        name: collectionName
+      });
 
       const response = await fetch(`${EMB_API_BASE}/collections`, {
         method: 'POST',
@@ -79,7 +97,21 @@ export default async function handler(req, res) {
         })
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log('컬렉션 생성 응답 (텍스트):', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('컬렉션 생성 응답 (JSON):', data);
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        console.error('응답 텍스트:', responseText);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Invalid JSON response from FastAPI: ' + responseText.substring(0, 100)
+        });
+      }
       
       if (data.ok) {
         return res.status(200).json({ 
@@ -110,7 +142,21 @@ export default async function handler(req, res) {
         method: 'DELETE'
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      console.log('컬렉션 삭제 응답 (텍스트):', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('컬렉션 삭제 응답 (JSON):', data);
+      } catch (parseError) {
+        console.error('JSON 파싱 오류:', parseError);
+        console.error('응답 텍스트:', responseText);
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Invalid JSON response from FastAPI: ' + responseText.substring(0, 100)
+        });
+      }
       
       if (data.ok) {
         return res.status(200).json({ 

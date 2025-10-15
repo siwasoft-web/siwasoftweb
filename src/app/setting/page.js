@@ -76,21 +76,6 @@ function Setting() {
   //변경 테스트 20251015 커밋이되나?
   // RAG 컬렉션 로드
   const loadRagCollections = async () => {
-    // 임시로 API 호출 비활성화하고 기본 컬렉션만 사용
-    const defaultCollections = [
-      { _id: 'test', name: 'test' },
-      { _id: 'github_repos', name: 'github_repos' },
-      { _id: 'docs_agent', name: 'docs_agent' }
-    ];
-    console.log('Using default collections:', defaultCollections);
-    setRagCollections(defaultCollections);
-    
-    if (!selectedCollectionId && defaultCollections.length > 0) {
-      setSelectedCollectionId(defaultCollections[0]._id);
-    }
-    
-    // API 호출은 주석 처리 (문제 해결 후 활성화)
-    /*
     try {
       console.log('Loading RAG collections...');
       const res = await fetch('/api/rag-collections');
@@ -141,7 +126,6 @@ function Setting() {
         setSelectedCollectionId(defaultCollections[0]._id);
       }
     }
-    */
   };
 
   // 컴포넌트 마운트 시 설정 정보/임베딩 소스 로드
@@ -297,12 +281,16 @@ function Setting() {
     }
     try {
       setIsWorkingRag(true);
+      console.log('컬렉션 생성 요청:', { name });
+      
       const res = await fetch('/api/rag-collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
       });
       const data = await safeParseJson(res);
+      console.log('컬렉션 생성 응답:', data);
+      
       if (!res.ok || !data.success) throw new Error(data.error || '컬렉션 생성 실패');
       setNewCollectionName('');
       await loadRagCollections();

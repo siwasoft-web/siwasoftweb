@@ -144,6 +144,18 @@ NAVER_CLIENT_SECRET=your_naver_client_secret
 # OAuth - Kakao
 KAKAO_CLIENT_ID=your_kakao_client_id
 KAKAO_CLIENT_SECRET=your_kakao_client_secret
+
+# Embedding API Configuration
+EMB_API_BASE=http://localhost:8001
+
+# Directory paths for different embedding types
+RAG_TARGET_DIR=/home/siwasoft/siwasoft/mcp/pdf
+CARBON_TARGET_DIR=/home/siwasoft/siwasoft/mcp/carbon
+
+# Chroma and output directories
+CHROMA_PATH=/home/siwasoft/siwasoft/mcp/chroma
+OUTPUT_DIR=/home/siwasoft/siwasoft/mcp/out
+ARCHIVE_DIR=/home/siwasoft/siwasoft/mcp/end
 ```
 
 ### 3. 개발 서버 실행
@@ -202,7 +214,34 @@ pm2 start ecosystem.config.js
   }
   ```
 
-#### 4. NextAuth API
+#### 4. RAG 임베딩 API
+- **Endpoint**: `/api/rag-embedding`
+- **Method**: POST
+- **Body**:
+  ```json
+  {
+    "file": "base64_encoded_pdf",
+    "filename": "파일명",
+    "collection": "컬렉션명"
+  }
+  ```
+
+#### 5. 탄소배출량 임베딩 API
+- **Endpoint**: `/api/carbon-embeddings`
+- **Method**: POST
+- **Body**: FormData with file
+
+#### 6. 사용자 임베딩 소스 API
+- **Endpoint**: `/api/user-embeddings`
+- **Method**: GET, POST, DELETE
+- 사용자별 임베딩 소스 관리
+
+#### 7. RAG 컬렉션 API
+- **Endpoint**: `/api/rag-collections`
+- **Method**: GET, POST, DELETE
+- RAG 컬렉션 관리
+
+#### 8. NextAuth API
 - **Endpoint**: `/api/auth/*`
 - 로그인, 로그아웃, 세션 관리
 

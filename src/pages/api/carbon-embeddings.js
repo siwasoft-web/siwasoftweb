@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
-const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/pdf';
+const TARGET_DIR = process.env.CARBON_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/carbon';
 
 export default async function handler(req, res) {
   const session = await getServerSession(req, res, authOptions);
@@ -17,23 +17,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { file, filename, collection } = req.body;
+    const formData = await req.formData();
+    const file = formData.get('file');
     
     if (!file) {
       return res.status(400).json({ success: false, error: 'File is required' });
     }
 
-    // Base64 파일을 실제 파일로 저장
-    const base64Data = file.replace(/^data:application\/pdf;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    // 원본 파일명 사용 (제공되지 않은 경우에만 타임스탬프 사용)
-    let originalFilename = filename || `upload_${Date.now()}.pdf`;
-    
-    // 파일명이 .pdf로 끝나지 않으면 .pdf 추가
-    if (!originalFilename.toLowerCase().endsWith('.pdf')) {
-      originalFilename += '.pdf';
-    }
+    // 파일을 버퍼로 변환
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = file.name;
     
     // TARGET_DIR이 존재하는지 확인하고 없으면 생성
     if (!fs.existsSync(TARGET_DIR)) {
@@ -41,11 +34,11 @@ export default async function handler(req, res) {
     }
     
     // 파일명 중복 방지
-    let filepath = path.join(TARGET_DIR, originalFilename);
+    let filepath = path.join(TARGET_DIR, filename);
     let counter = 1;
     while (fs.existsSync(filepath)) {
-      const nameWithoutExt = path.parse(originalFilename).name;
-      const ext = path.parse(originalFilename).ext;
+      const nameWithoutExt = path.parse(filename).name;
+      const ext = path.parse(filename).ext;
       const newFilename = `${nameWithoutExt}_${counter}${ext}`;
       filepath = path.join(TARGET_DIR, newFilename);
       counter++;
@@ -53,24 +46,23 @@ export default async function handler(req, res) {
     
     // 파일 저장
     fs.writeFileSync(filepath, buffer);
-    console.log(`File saved to: ${filepath}`);
+    console.log(`Carbon file saved to: ${filepath}`);
 
-    // FastAPI 서버의 /pdfemb 엔드포인트 호출
-    const response = await fetch(`${EMB_API_BASE}/pdfemb`, {
+    // FastAPI 서버의 /carbonemb 엔드포인트 호출
+    const response = await fetch(`${EMB_API_BASE}/carbonemb`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         filepath: filepath,
-        collection: collection || 'default',
+        collection: 'carbon_emissions',
         chroma: process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/mcp/chroma',
         outdir: process.env.OUTPUT_DIR || '/home/siwasoft/siwasoft/mcp/out',
         archive: true,
         archive_dir: process.env.ARCHIVE_DIR || '/home/siwasoft/siwasoft/mcp/end',
         chunk_tokens: 1000,
-        chunk_overlap: 200,
-        embed_raw_tables: false
+        chunk_overlap: 200
       })
     });
 
@@ -79,19 +71,19 @@ export default async function handler(req, res) {
     if (data.ok) {
       return res.status(200).json({ 
         success: true, 
-        message: 'PDF embedding completed successfully',
+        message: 'Carbon emissions embedding completed successfully',
         collection: data.collection,
         embedded: data.embedded
       });
     } else {
       return res.status(500).json({ 
         success: false, 
-        error: 'Failed to process PDF embedding' 
+        error: 'Failed to process carbon emissions embedding' 
       });
     }
 
   } catch (err) {
-    console.error('rag-embedding API error:', err);
+    console.error('carbon-embeddings API error:', err);
     return res.status(500).json({ 
       success: false, 
       error: 'Internal server error: ' + err.message 

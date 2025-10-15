@@ -73,7 +73,7 @@ function Setting() {
       console.error('Failed to load embedding sources:', err);
     }
   };
-
+  //변경 테스트 20251015 커밋이되나?
   // RAG 컬렉션 로드
   const loadRagCollections = async () => {
     // 임시로 API 호출 비활성화하고 기본 컬렉션만 사용

@@ -76,18 +76,72 @@ function Setting() {
 
   // RAG 컬렉션 로드
   const loadRagCollections = async () => {
+    // 임시로 API 호출 비활성화하고 기본 컬렉션만 사용
+    const defaultCollections = [
+      { _id: 'test', name: 'test' },
+      { _id: 'github_repos', name: 'github_repos' },
+      { _id: 'docs_agent', name: 'docs_agent' }
+    ];
+    console.log('Using default collections:', defaultCollections);
+    setRagCollections(defaultCollections);
+    
+    if (!selectedCollectionId && defaultCollections.length > 0) {
+      setSelectedCollectionId(defaultCollections[0]._id);
+    }
+    
+    // API 호출은 주석 처리 (문제 해결 후 활성화)
+    /*
     try {
+      console.log('Loading RAG collections...');
       const res = await fetch('/api/rag-collections');
       const data = await safeParseJson(res);
+      console.log('Collections API response:', data);
+      
       if (res.ok && data.success) {
-        setRagCollections(data.items || []);
-        if (!selectedCollectionId && (data.items || []).length > 0) {
-          setSelectedCollectionId(data.items[0]._id || data.items[0].id);
+        const collections = data.items || [];
+        console.log('Setting collections:', collections);
+        setRagCollections(collections);
+        
+        if (!selectedCollectionId && collections.length > 0) {
+          const firstId = collections[0]._id || collections[0].id;
+          console.log('Auto-selecting first collection:', firstId);
+          setSelectedCollectionId(firstId);
+        }
+      } else {
+        console.error('Failed to load collections:', data);
+        console.error('Response status:', res.status);
+        console.error('Response headers:', res.headers);
+        
+        // API 호출 실패 시 기본 컬렉션들 설정
+        const defaultCollections = [
+          { _id: 'test', name: 'test' },
+          { _id: 'github_repos', name: 'github_repos' },
+          { _id: 'docs_agent', name: 'docs_agent' }
+        ];
+        console.log('Using default collections:', defaultCollections);
+        setRagCollections(defaultCollections);
+        
+        if (!selectedCollectionId && defaultCollections.length > 0) {
+          setSelectedCollectionId(defaultCollections[0]._id);
         }
       }
     } catch (err) {
       console.error('컬렉션 로드 실패:', err);
+      
+      // 에러 발생 시에도 기본 컬렉션들 설정
+      const defaultCollections = [
+        { _id: 'test', name: 'test' },
+        { _id: 'github_repos', name: 'github_repos' },
+        { _id: 'docs_agent', name: 'docs_agent' }
+      ];
+      console.log('Using default collections due to error:', defaultCollections);
+      setRagCollections(defaultCollections);
+      
+      if (!selectedCollectionId && defaultCollections.length > 0) {
+        setSelectedCollectionId(defaultCollections[0]._id);
+      }
     }
+    */
   };
 
   // 컴포넌트 마운트 시 설정 정보/임베딩 소스 로드
@@ -296,19 +350,34 @@ function Setting() {
     }
     try {
       setIsWorkingRag(true);
-      const form = new FormData();
-      form.append('file', ragPdfFile);
-      const res = await fetch(`/api/rag-collections/${selectedCollectionId}/embed-pdf`, {
-        method: 'POST',
-        body: form
+      
+      // 파일을 Base64로 변환
+      const reader = new FileReader();
+      const base64File = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(ragPdfFile);
       });
+      
+      const res = await fetch('/api/rag-embedding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          file: base64File,
+          collection: selectedCollectionId
+        })
+      });
+      
       const data = await safeParseJson(res);
-      if (!res.ok || !data.success) throw new Error(data.error || '임베딩 실패');
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || '임베딩 실패');
+      }
+      
       setRagPdfFile(null);
       alert('PDF RAG 임베딩이 완료되었습니다.');
     } catch (err) {
-      console.error(err);
-      alert('PDF RAG 임베딩에 실패했습니다.');
+      console.error('PDF RAG 임베딩 실패:', err);
+      alert('PDF RAG 임베딩에 실패했습니다: ' + err.message);
     } finally {
       setIsWorkingRag(false);
     }
@@ -366,13 +435,13 @@ function Setting() {
               onClick={() => setActiveTab('company')}
               className={`${styles.tabButton} ${activeTab==='company' ? styles.tabButtonActive : ''}`}
             >
-              회사정보
+              Company Plan
             </button>
             <button
               onClick={() => setActiveTab('embedding')}
               className={`${styles.tabButton} ${activeTab==='embedding' ? styles.tabButtonActive : ''}`}
             >
-              임베딩
+              LLM Setting
             </button>
           </div>
         </div>

@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 
 export default async function handler(req, res) {
+  console.log('ChatMCP API called:', req.method);
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { query, tool, with_answer } = req.body;
+    console.log('Request body:', { query, tool, with_answer });
     
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
@@ -19,6 +22,7 @@ export default async function handler(req, res) {
     // FastAPI 백엔드 엔드포인트 결정
     const endpoint = tool === 'chatbot' ? '/chatbot' : '/embed';
     const url = `http://localhost:8000${endpoint}`;
+    console.log('Calling FastAPI endpoint:', url);
 
     // 요청 바디 구성
     const body = new URLSearchParams({
@@ -30,6 +34,8 @@ export default async function handler(req, res) {
       body.append('with_answer', with_answer ? 'true' : 'false');
     }
 
+    console.log('Request body params:', body.toString());
+
     // FastAPI 백엔드로 요청 전송
     const response = await fetch(url, {
       method: 'POST',
@@ -39,8 +45,13 @@ export default async function handler(req, res) {
       body: body
     });
 
+    console.log('FastAPI response status:', response.status);
+    console.log('FastAPI response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error(`Backend API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('FastAPI error response:', errorText);
+      throw new Error(`Backend API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();

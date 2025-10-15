@@ -7,7 +7,7 @@ import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 
 function Setting() {
-  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding'
+  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents'
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,6 +30,11 @@ function Setting() {
   // 탄소배출량 임베딩 상태
   const [carbonFile, setCarbonFile] = useState(null);
   const [isWorkingCarbon, setIsWorkingCarbon] = useState(false);
+  // Documents 탭 상태
+  const [pdfRagDocuments, setPdfRagDocuments] = useState([]);
+  const [carbonDocuments, setCarbonDocuments] = useState([]);
+  const [selectedPdfRagCollection, setSelectedPdfRagCollection] = useState('');
+  const [selectedCarbonCollection, setSelectedCarbonCollection] = useState('');
 
   // 공통: 안전한 JSON 파서
   const safeParseJson = async (response) => {
@@ -398,6 +403,48 @@ function Setting() {
     }
   };
 
+  // PDF RAG 문서 목록 로드
+  const loadPdfRagDocuments = async (collectionId) => {
+    if (!collectionId) {
+      setPdfRagDocuments([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/rag-documents?collection=${collectionId}`);
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setPdfRagDocuments(data.documents || []);
+      } else {
+        console.error('Failed to load PDF RAG documents:', data.error);
+        setPdfRagDocuments([]);
+      }
+    } catch (err) {
+      console.error('Error loading PDF RAG documents:', err);
+      setPdfRagDocuments([]);
+    }
+  };
+
+  // 탄소배출량 문서 목록 로드
+  const loadCarbonDocuments = async (collectionId) => {
+    if (!collectionId) {
+      setCarbonDocuments([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/carbon-documents?collection=${collectionId}`);
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        setCarbonDocuments(data.documents || []);
+      } else {
+        console.error('Failed to load carbon documents:', data.error);
+        setCarbonDocuments([]);
+      }
+    } catch (err) {
+      console.error('Error loading carbon documents:', err);
+      setCarbonDocuments([]);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -431,6 +478,12 @@ function Setting() {
               className={`${styles.tabButton} ${activeTab==='embedding' ? styles.tabButtonActive : ''}`}
             >
               LLM Setting
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`${styles.tabButton} ${activeTab==='documents' ? styles.tabButtonActive : ''}`}
+            >
+              Documents
             </button>
           </div>
         </div>
@@ -682,6 +735,110 @@ function Setting() {
                     >
                       {isWorkingCarbon ? '임베딩 실행 중...' : '임베딩 실행'}
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'documents' && (
+            <div>
+              <h3 className={styles.pageTitle}>Document Management</h3>
+              
+              {/* 1. PDF RAG Documents */}
+              <div className={styles.section}>
+                <h4 className={styles.sectionTitle}>1) PDF RAG</h4>
+                <div className={styles.stackY4}>
+                  {/* 컬렉션 선택 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>Collection List</label>
+                    <div className={styles.fields}>
+                      <select
+                        value={selectedPdfRagCollection}
+                        onChange={(e) => {
+                          setSelectedPdfRagCollection(e.target.value);
+                          loadPdfRagDocuments(e.target.value);
+                        }}
+                        className={styles.select}
+                      >
+                        <option value="">Select Collection</option>
+                        {ragCollections.map((c) => (
+                          <option key={c._id || c.id} value={c._id || c.id}>{c.name || c.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* 임베딩된 문서 목록 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>Embedded Documents</label>
+                    <div className={styles.fields}>
+                      <div className={styles.documentList}>
+                        {pdfRagDocuments.length > 0 ? (
+                          pdfRagDocuments.map((doc, index) => (
+                            <div key={index} className={styles.documentItem}>
+                              <span className={styles.documentName}>{doc.filename || doc.name || `Document ${index + 1}`}</span>
+                              <span className={styles.documentDate}>
+                                {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Unknown date'}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className={styles.noDocuments}>
+                            {selectedPdfRagCollection ? 'No documents found in this collection' : 'Select a collection to view documents'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Carbon Emission Embedding */}
+              <div className={styles.sectionDivider}>
+                <h4 className={styles.sectionTitle}>2) Carbon Emission Embedding</h4>
+                <div className={styles.stackY4}>
+                  {/* 컬렉션 선택 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>Collection List</label>
+                    <div className={styles.fields}>
+                      <select
+                        value={selectedCarbonCollection}
+                        onChange={(e) => {
+                          setSelectedCarbonCollection(e.target.value);
+                          loadCarbonDocuments(e.target.value);
+                        }}
+                        className={styles.select}
+                      >
+                        <option value="">Select Collection</option>
+                        {ragCollections.map((c) => (
+                          <option key={c._id || c.id} value={c._id || c.id}>{c.name || c.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* 임베딩된 문서 목록 */}
+                  <div className={styles.row}>
+                    <label className={styles.label}>Embedded Documents</label>
+                    <div className={styles.fields}>
+                      <div className={styles.documentList}>
+                        {carbonDocuments.length > 0 ? (
+                          carbonDocuments.map((doc, index) => (
+                            <div key={index} className={styles.documentItem}>
+                              <span className={styles.documentName}>{doc.filename || doc.name || `Document ${index + 1}`}</span>
+                              <span className={styles.documentDate}>
+                                {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : 'Unknown date'}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className={styles.noDocuments}>
+                            {selectedCarbonCollection ? 'No documents found in this collection' : 'Select a collection to view documents'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

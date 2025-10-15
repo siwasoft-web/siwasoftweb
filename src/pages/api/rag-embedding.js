@@ -4,25 +4,59 @@ import fs from 'fs';
 import path from 'path';
 
 const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
+const GIT_API_BASE = process.env.GIT_API_BASE || 'http://localhost:8001';
 const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/pdf';
 
-export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
+// Git RAG 임베딩 처리 함수
+async function handleGitEmbedding(req, res, git_id) {
+  if (!git_id || !git_id.trim()) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Git ID is required' 
+    });
   }
 
   try {
-    const { file, filename, collection } = req.body;
-    
-    if (!file) {
-      return res.status(400).json({ success: false, error: 'File is required' });
+    // 외부 emb.py 서버의 /gitrag 엔드포인트로 요청 전달
+    const response = await fetch(`${GIT_API_BASE}/gitrag`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ git_id: git_id.trim() })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        success: false,
+        error: data.error || 'Git RAG embedding failed'
+      });
     }
 
+    return res.status(200).json({
+      success: true,
+      message: 'Git RAG embedding completed successfully',
+      data: data
+    });
+
+  } catch (error) {
+    console.error('Git RAG embedding error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error: ' + error.message
+    });
+  }
+}
+
+// PDF RAG 임베딩 처리 함수
+async function handlePdfEmbedding(req, res, { file, filename, collection }) {
+  if (!file) {
+    return res.status(400).json({ success: false, error: 'File is required' });
+  }
+
+  try {
     // Base64 파일을 실제 파일로 저장
     const base64Data = file.replace(/^data:application\/pdf;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
@@ -89,6 +123,36 @@ export default async function handler(req, res) {
         error: 'Failed to process PDF embedding' 
       });
     }
+
+  } catch (err) {
+    console.error('PDF embedding error:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error: ' + err.message 
+    });
+  }
+}
+
+export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+  if (!session) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  try {
+    const { file, filename, collection, git_id, type } = req.body;
+    
+    // Git RAG 임베딩 처리
+    if (type === 'git' || git_id) {
+      return await handleGitEmbedding(req, res, git_id);
+    }
+    
+    // PDF RAG 임베딩 처리 (기본값)
+    return await handlePdfEmbedding(req, res, { file, filename, collection });
 
   } catch (err) {
     console.error('rag-embedding API error:', err);

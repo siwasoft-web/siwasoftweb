@@ -30,6 +30,9 @@ function Setting() {
   // 탄소배출량 임베딩 상태
   const [carbonFile, setCarbonFile] = useState(null);
   const [isWorkingCarbon, setIsWorkingCarbon] = useState(false);
+  // Git RAG 임베딩 상태
+  const [gitId, setGitId] = useState('');
+  const [isWorkingGit, setIsWorkingGit] = useState(false);
   // Documents 탭 상태
   const [pdfRagDocuments, setPdfRagDocuments] = useState([]);
   const [carbonDocuments, setCarbonDocuments] = useState([]);
@@ -403,6 +406,42 @@ function Setting() {
     }
   };
 
+  // Git RAG 임베딩 실행
+  const handleRunGitEmbedding = async () => {
+    if (!gitId.trim()) {
+      alert('Git ID를 입력하세요.');
+      return;
+    }
+    try {
+      setIsWorkingGit(true);
+      
+      // 통합 임베딩 API로 요청 (type: 'git'으로 구분)
+      const res = await fetch('/api/rag-embedding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          git_id: gitId.trim(),
+          type: 'git'
+        })
+      });
+      
+      const data = await safeParseJson(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Git RAG 임베딩 실패');
+      }
+      
+      setGitId('');
+      alert('Git RAG 임베딩이 완료되었습니다.');
+    } catch (err) {
+      console.error('Git RAG 임베딩 실패:', err);
+      alert('Git RAG 임베딩에 실패했습니다: ' + err.message);
+    } finally {
+      setIsWorkingGit(false);
+    }
+  };
+
   // PDF RAG 문서 목록 로드
   const loadPdfRagDocuments = async (collectionId) => {
     if (!collectionId) {
@@ -734,6 +773,35 @@ function Setting() {
                       className={styles.runButton}
                     >
                       {isWorkingCarbon ? '임베딩 실행 중...' : '임베딩 실행'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Git RAG 임베딩 */}
+              <div className={styles.sectionDivider}>
+                <h4 className={styles.sectionTitle}>3) Git RAG 임베딩</h4>
+                <div className={styles.stackY4}>
+                  <div className={styles.row}>
+                    <label className={styles.label}>Git ID</label>
+                    <div className={styles.fields}>
+                      <input
+                        type="text"
+                        value={gitId}
+                        onChange={(e) => setGitId(e.target.value)}
+                        placeholder="GitHub 사용자명 또는 저장소 URL을 입력하세요"
+                        className={styles.input}
+                        disabled={isWorkingGit}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <button
+                      onClick={handleRunGitEmbedding}
+                      disabled={isWorkingGit}
+                      className={styles.runButton}
+                    >
+                      {isWorkingGit ? '임베딩 실행 중...' : '임베딩 실행'}
                     </button>
                   </div>
                 </div>

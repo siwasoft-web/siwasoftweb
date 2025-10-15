@@ -153,7 +153,7 @@ RAG_TARGET_DIR=/home/siwasoft/siwasoft/mcp/pdf
 CARBON_TARGET_DIR=/home/siwasoft/siwasoft/mcp/carbon
 
 # Chroma and output directories
-CHROMA_PATH=/home/siwasoft/siwasoft/mcp/chroma
+CHROMA_PATH=/home/siwasoft/siwasoft/emd
 OUTPUT_DIR=/home/siwasoft/siwasoft/mcp/out
 ARCHIVE_DIR=/home/siwasoft/siwasoft/mcp/end
 ```

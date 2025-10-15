@@ -64,7 +64,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         filepath: filepath,
         collection: collection || 'default',
-        chroma: process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/mcp/chroma',
+        chroma: process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd',
         outdir: process.env.OUTPUT_DIR || '/home/siwasoft/siwasoft/mcp/out',
         archive: true,
         archive_dir: process.env.ARCHIVE_DIR || '/home/siwasoft/siwasoft/mcp/end',

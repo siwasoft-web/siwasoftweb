@@ -116,12 +116,6 @@ if __name__ == "__main__":
             }
           }
           
-          // 백업 파일 생성 (안전장치)
-          if (stateFileUpdated) {
-            const backupPath = `${stateFilePath}.backup.${Date.now()}`;
-            fs.writeFileSync(backupPath, JSON.stringify(stateData, null, 2));
-            console.log(`Created backup: ${backupPath}`);
-          }
         } else {
           console.log(`State file not found: ${stateFilePath}`);
         }

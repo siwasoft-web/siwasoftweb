@@ -10,6 +10,8 @@ export default function withAuth(WrappedComponent) {
     const router = useRouter();
 
     useEffect(() => {
+      //console.log('🔍 withAuth session:', session); // ✅ 추가
+      //console.log('🔍 withAuth status:', status);   // ✅ 추가
       if (status === 'loading') return; // 로딩 중일 때는 아무것도 하지 않음
       
       if (!session) {

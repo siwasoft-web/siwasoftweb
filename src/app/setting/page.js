@@ -38,6 +38,8 @@ function Setting() {
   const [gitCollections, setGitCollections] = useState([]);
   const [savedGitSources, setSavedGitSources] = useState([]);
   const [selectedSavedGitId, setSelectedSavedGitId] = useState('');
+  const [gitEmbeddings, setGitEmbeddings] = useState([]);
+  const [selectedGitEmbeddingId, setSelectedGitEmbeddingId] = useState('');
   // Documents 탭 상태
   const [pdfRagDocuments, setPdfRagDocuments] = useState([]);
   const [carbonDocuments, setCarbonDocuments] = useState([]);
@@ -168,6 +170,89 @@ function Setting() {
     }
   };
 
+  // 선택된 Git 컬렉션의 임베딩 문서 로드 (emd2)
+  const loadGitEmbeddings = async (collectionId) => {
+    if (!collectionId) {
+      setGitEmbeddings([]);
+      setSelectedGitEmbeddingId('');
+      return;
+    }
+    try {
+      console.log(`Loading Git embeddings for collection: ${collectionId}`);
+      const res = await fetch(`/api/rag-documents?collection=${encodeURIComponent(collectionId)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`);
+      const data = await safeParseJson(res);
+      if (res.ok && data.success) {
+        console.log(`Found ${data.documents?.length || 0} documents for collection ${collectionId}:`, data.documents);
+        setGitEmbeddings(data.documents || []);
+        if ((data.documents || []).length > 0) {
+          setSelectedGitEmbeddingId(data.documents[0].id);
+        }
+      } else {
+        console.log(`No documents found for collection ${collectionId}:`, data);
+        setGitEmbeddings([]);
+        setSelectedGitEmbeddingId('');
+      }
+    } catch (err) {
+      console.error('Git 임베딩 로드 실패:', err);
+      setGitEmbeddings([]);
+      setSelectedGitEmbeddingId('');
+    }
+  };
+
+  // Git 임베딩을 트리뷰 형태로 그룹화
+  const getGitEmbeddingTree = () => {
+    const groups = {};
+    
+    gitEmbeddings.forEach(doc => {
+      const filename = doc.filename || doc.name || doc.id;
+      console.log('Processing file:', filename, 'ID:', doc.id);
+      
+      let repoName = '기타';
+      
+      // ID에서 레포지토리명 추출: "repo:FILE:path:001" -> "repo"
+      if (doc.id && doc.id.includes(':')) {
+        const parts = doc.id.split(':');
+        if (parts.length >= 1) {
+          repoName = parts[0]; // 첫 번째 부분이 레포지토리명
+        }
+      }
+      // ID 패턴이 없으면 파일명에서 추출
+      else if (filename && filename !== 'document_1' && filename !== 'document_2') {
+        const parts = filename.split('/');
+        if (parts.length >= 2) {
+          // GitHub 스타일: user/repo/... 형태인지 확인
+          if (parts[0] && parts[1] && !parts[0].includes('.') && !parts[1].includes('.')) {
+            repoName = `${parts[0]}/${parts[1]}`;
+          } else {
+            // 일반 경로인 경우 첫 번째 디렉토리를 그룹으로 사용
+            repoName = parts[0] || '기타';
+          }
+        } else if (parts.length === 1) {
+          repoName = parts[0] || '기타';
+        }
+      }
+      
+      if (!groups[repoName]) {
+        groups[repoName] = [];
+      }
+      groups[repoName].push(doc);
+    });
+
+    console.log('Grouped embeddings:', groups);
+    return groups;
+  };
+
+  // 프로젝트별 문서 개수 계산
+  const getProjectDocumentCount = (projectName) => {
+    return gitEmbeddings.filter(doc => {
+      if (doc.id && doc.id.includes(':')) {
+        const parts = doc.id.split(':');
+        return parts.length >= 1 && parts[0] === projectName;
+      }
+      return false;
+    }).length;
+  };
+
   // 저장된 Git ID 로드
   const loadSavedGitSources = async () => {
     try {
@@ -192,6 +277,11 @@ function Setting() {
     loadGitCollections(); // Git(emd2) 컬렉션
     loadSavedGitSources(); // 저장된 Git ID 목록
   }, []);
+
+  // 컬렉션 변경 시 임베딩 목록도 갱신
+  useEffect(() => {
+    loadGitEmbeddings(selectedGitCollectionId);
+  }, [selectedGitCollectionId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -893,6 +983,8 @@ function Setting() {
                     </div>
                   </div>
 
+                  
+
                   {/* 임베딩 실행 */}
                   <div>
                     <button
@@ -1033,6 +1125,78 @@ function Setting() {
                       </button>
                     </div>
                   </div>
+
+               {/* 임베딩 삭제 (Git 전용) */}
+               <div className={styles.row}>
+                 <label className={styles.label}>임베딩 삭제</label>
+                 <div className={styles.fields}>
+                   <select
+                     value={selectedGitEmbeddingId}
+                     onChange={(e) => setSelectedGitEmbeddingId(e.target.value)}
+                     className={`${styles.select} ${styles.gitEmbeddingSelect}`}
+                     disabled={isWorkingGit || !selectedGitCollectionId}
+                   >
+                     <option value="">임베딩 데이터를 선택하세요</option>
+                     {Object.entries(getGitEmbeddingTree()).map(([repoName, docs]) => (
+                       <React.Fragment key={repoName}>
+                         <option value={`PROJECT:${repoName}`} className={styles.treeOptionGroup}>
+                           📁 {repoName} ({getProjectDocumentCount(repoName)}개 문서)
+                         </option>
+                         {docs.map((d) => (
+                           <option key={d.id} value={d.id} className={styles.treeOptionItem}>
+                             └─ {d.filename || d.name || d.id}
+                           </option>
+                         ))}
+                       </React.Fragment>
+                     ))}
+                   </select>
+                   <button
+                     onClick={async () => {
+                       if (!selectedGitCollectionId || !selectedGitEmbeddingId) return;
+                       
+                       const isProjectDelete = selectedGitEmbeddingId.startsWith('PROJECT:');
+                       const projectName = isProjectDelete ? selectedGitEmbeddingId.replace('PROJECT:', '') : null;
+                       const docCount = isProjectDelete ? getProjectDocumentCount(projectName) : 1;
+                       
+                       const confirmMessage = isProjectDelete 
+                         ? `프로젝트 "${projectName}"의 모든 임베딩 (${docCount}개 문서)을 삭제하시겠습니까?`
+                         : '선택한 임베딩을 삭제하시겠습니까?';
+                       
+                       if (!confirm(confirmMessage)) return;
+                       
+                       try {
+                         setIsWorkingGit(true);
+                         
+                         if (isProjectDelete) {
+                           // 프로젝트 단위 삭제
+                           const res = await fetch(`/api/rag-delete-project?collection=${encodeURIComponent(selectedGitCollectionId)}&project=${encodeURIComponent(projectName)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+                           const data = await safeParseJson(res);
+                           if (!res.ok || !data.success) throw new Error(data.error || '프로젝트 삭제 실패');
+                           alert(`프로젝트 "${projectName}"의 ${data.deletedCount}개 문서가 삭제되었습니다.`);
+                         } else {
+                           // 개별 문서 삭제
+                           const res = await fetch(`/api/rag-delete-document?collection=${encodeURIComponent(selectedGitCollectionId)}&id=${encodeURIComponent(selectedGitEmbeddingId)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+                           const data = await safeParseJson(res);
+                           if (!res.ok || !data.success) throw new Error(data.error || '삭제 실패');
+                           alert('임베딩이 삭제되었습니다.');
+                         }
+                         
+                         await loadGitEmbeddings(selectedGitCollectionId);
+                         setSelectedGitEmbeddingId('');
+                       } catch (err) {
+                         console.error('임베딩 삭제 실패:', err);
+                         alert('임베딩 삭제에 실패했습니다.');
+                       } finally {
+                         setIsWorkingGit(false);
+                       }
+                     }}
+                     disabled={isWorkingGit || !selectedGitCollectionId || !selectedGitEmbeddingId}
+                     className={styles.dangerOutline + " disabled:opacity-50 disabled:cursor-not-allowed"}
+                   >
+                     삭제
+                   </button>
+                 </div>
+               </div>
 
                   <div>
                     <button

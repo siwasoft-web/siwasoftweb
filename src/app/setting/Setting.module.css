@@ -339,6 +339,34 @@
   min-width: 280px;
 }
 
+/* Git 임베딩 트리뷰 셀렉트 */
+.gitEmbeddingSelect
+{
+  width: auto;
+  min-width: 320px;
+  font-family: monospace;
+}
+
+/* 트리뷰 옵션 스타일 */
+.treeOption
+{
+  padding-left: 0.5rem;
+}
+
+.treeOptionGroup
+{
+  font-weight: 600;
+  color: #1F2937;
+  background-color: #F3F4F6;
+}
+
+.treeOptionItem
+{
+  padding-left: 1.5rem;
+  color: #6B7280;
+  font-size: 0.875rem;
+}
+
 /* 공통 textarea */
 .textarea
 {

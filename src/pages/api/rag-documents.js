@@ -11,7 +11,7 @@ const execFileAsync = promisify(execFile);
 const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
 const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/end';
 const OUTPUT_DIR = process.env.OUTPUT_DIR || '/home/siwasoft/siwasoft/mcp/out';
-const CHROMA_PATH = process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd';
+const CHROMA_PATH_DEFAULT = process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd';
 const ARCHIVE_DIR = process.env.ARCHIVE_DIR || '/home/siwasoft/siwasoft/mcp/end';
 
 export default async function handler(req, res) {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { collection } = req.query;
+    const { collection, chroma } = req.query;
     if (!collection) {
       return res.status(400).json({ success: false, error: 'Collection parameter is required' });
     }
@@ -58,10 +58,25 @@ def main():
             for i, doc_id in enumerate(ids):
                 md  = metas[i] if i < len(metas) else {}
                 doc = docs[i] if i < len(docs) else ""
-                # 파일명 우선순위: source → filename → 폴백(document_i)
-                filename = md.get("source", md.get("filename", f"document_{i+1}"))
-                if isinstance(filename, str) and "/" in filename:
-                    filename = os.path.basename(filename)
+                # 파일명 우선순위: source → filename → file_path → ID 파싱 → 폴백(document_i)
+                filename = md.get("source", md.get("filename", md.get("file_path", f"document_{i+1}")))
+                
+                # Git.py ID 패턴 파싱: "repo:FILE:path:001" -> "path"
+                if filename.startswith("document_") and ":" in doc_id:
+                    parts = doc_id.split(":")
+                    if len(parts) >= 3 and parts[1] == "FILE":
+                        # "repo:FILE:path_file:001" -> "path/file"
+                        file_part = parts[2]
+                        filename = file_part.replace("_", "/")
+                    elif len(parts) >= 3 and parts[1] == "FOLDER":
+                        # "repo:FOLDER:path_folder" -> "path/folder/"
+                        folder_part = parts[2]
+                        filename = folder_part.replace("_", "/") + "/"
+                    elif len(parts) >= 2 and parts[1] == "PROJECT":
+                        # "repo:PROJECT:000" -> "프로젝트 개요"
+                        filename = "프로젝트 개요"
+                
+                # 전체 경로 유지 (트리뷰를 위해)
                 documents.append({
                     "id": doc_id,
                     "filename": filename,
@@ -79,7 +94,7 @@ if __name__ == "__main__":
 
       const { stdout, stderr } = await execFileAsync(
         'python3',
-        ['-c', pythonScript, CHROMA_PATH, String(collection)],
+        ['-c', pythonScript, chroma || CHROMA_PATH_DEFAULT, String(collection)],
         { maxBuffer: 1024 * 1024 * 10 }
       );
       if (stderr) console.log('Python script stderr:', stderr);

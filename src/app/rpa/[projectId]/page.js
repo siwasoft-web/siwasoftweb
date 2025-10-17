@@ -1,85 +1,43 @@
 'use client';
 
-import React from 'react';
-import { useParams, useRouter } from 'next/navigation'; 
-import { Plus, CheckCircle, AlertCircle, Circle, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { CheckCircle, AlertCircle, Circle, ArrowLeft } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
-const dashboardTasks = [
-  {
-    title: '가용 재고',
-    status: '완료',
-    stage: '요구 사항 분석 및 디자인 단계',
-    dueDate: '2024년 12월 31일',
-    action: 'START',
-  },
-  {
-    title: '물류 재고',
-    status: '진행중',
-    stage: '개발 및 테스트 단계',
-    dueDate: '2025년 3월 15일',
-    action: 'STOP',
-  },
-  {
-    title: '생산 계획',
-    status: '완료',
-    stage: '최종 검토 및 배포 준비',
-    dueDate: '2024년 11월 30일',
-    action: 'START',
-  },
-  {
-    title: '메일링 서비스',
-    status: '대기중',
-    stage: '시작 대기',
-    dueDate: '2024년 11월 30일',
-    action: 'START',
-  },
-  {
-    title: 'LLM 데이터 생성',
-    status: '오류',
-    stage: '데이터 수집 단계에서 오류 발생',
-    dueDate: '2024년 10월 31일',
-    action: 'START',
-  },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://192.168.0.222:8010';
 
-const notifications = [
-  '알림: 프로젝트 A 팀 회의가 오전 10시에 있습니다.',
-  '알림: 프로젝트 B의 새로운 작업이 할당되었습니다.',
-  '알림: 프로젝트 C의 최종 보고서를 검토해주세요.',
-];
-
-const statusStyles = {
-  완료: {
-    icon: <CheckCircle size={16} className="text-white" />,
-    bg: 'bg-[#3B86F6]',
-    text: 'text-white',
-    label: '완료',
-  },
-  진행중: {
-    icon: <div className="w-3 h-3 bg-green-500 rounded-full"></div>,
-    bg: 'bg-green-100',
-    text: 'text-green-700',
-    label: '진행중',
-  },
-  대기중: {
+// 상태 스타일 정의
+const statusStylesByName = {
+  '대기중': {
     icon: <Circle size={12} className="text-gray-500" />,
     bg: 'bg-gray-200',
     text: 'text-gray-700',
     label: '대기중',
   },
-  오류: {
+  '실행중': {
+    icon: <div className="w-3 h-3 bg-green-500 rounded-full" />,
+    bg: 'bg-green-100',
+    text: 'text-green-700',
+    label: '실행중',
+  },
+  '오류': {
     icon: <AlertCircle size={16} className="text-white" />,
     bg: 'bg-red-500',
     text: 'text-white',
     label: '오류',
   },
+  '성공': {
+    icon: <CheckCircle size={16} className="text-white" />,
+    bg: 'bg-[#3B86F6]',
+    text: 'text-white',
+    label: '완료',
+  },
 };
 
-const StatusBadge = ({ status }) => {
-  const style = statusStyles[status];
-  if (!style) return null;
-
+const StatusBadge = ({ name }) => {
+  const style = statusStylesByName[name] || statusStylesByName['대기중'];
   return (
     <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${style.bg} ${style.text}`}>
       {style.icon}
@@ -88,58 +46,161 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+const codeToName = {
+  1000: '대기중',
+  1001: '실행중',
+  3001: '오류',
+};
+
 export default function ProjectDashboardPage() {
-  const { projectId } = useParams();
+  const { data: session } = useSession();
+  const { projectId } = useParams(); // site_code
   const router = useRouter();
+  const [rpaLogs, setRpaLogs] = useState([]);
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [siteName, setSiteName] = useState('');
+
+  // ✅ RPA 로그 불러오기
+  const fetchRpaLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/rpa_log/list/${projectId}`);
+      const data = await res.json();
+
+      // ✅ API 응답 구조를 통일시켜 안전하게 처리
+      const logs = Array.isArray(data) ? data : data.data || [];
+
+      setRpaLogs(logs); // 여기서 logs 변수를 실제로 사용
+
+      // ✅ 첫 번째 로그 자동 선택
+      if (logs.length > 0) {
+        setSelectedLog(logs[0]);
+        const logLines = logs[0].LOG?.split('\n').filter((l) => l.trim()) || [];
+        setNotifications(logLines);
+      }
+    } catch (err) {
+      console.error('RPA 로그 불러오기 실패:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSiteName = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/list`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.email || ''
+        },
+      });
+      const data = await res.json();
+      const match = data.data.find((s) => s.SITE_CODE == projectId);
+      if (match) setSiteName(match.site_name);
+    } catch (err) {
+      console.error('사이트명 불러오기 실패:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchSiteName();
+    fetchRpaLogs();
+  }, [projectId]);
+
+  // ✅ 로그 클릭 시 알림 갱신
+  const handleLogClick = (log) => {
+    setSelectedLog(log);
+    const logs = log.LOG?.split('\n').filter((l) => l.trim()) || [];
+    setNotifications(logs);
+  };
+
+  if (loading)
+    return (
+      <div className="flex justify-center items-center min-h-screen text-gray-500">
+        데이터 불러오는 중...
+      </div>
+    );
 
   return (
     <div className="bg-gray-50/50 min-h-screen p-8">
       <PageHeader title="RPA Analyst" />
 
       <div className="flex justify-between items-center mb-6">
-        <div className='flex justify-start items-center'>
-          <button onClick={() => router.back()}
-            className='mr-2 p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer'>
+        <div className="flex justify-start items-center">
+          <button
+            onClick={() => router.back()}
+            className="mr-2 p-2 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+          >
             <ArrowLeft />
           </button>
-          <h2 className="text-2xl font-bold text-gray-800">대시보드</h2>
+          <h2 className="text-2xl font-bold text-gray-800">
+            {siteName ? `${siteName}` : `사이트 코드 ${projectId}`}
+          </h2>
         </div>
-        <button className="flex items-center gap-2 bg-[#3b83f6] hover:bg-[#155efcdc] transition-colors cursor-pointer text-white rounded-full px-4 py-2 text-sm font-semibold">
-          <Plus size={16} />
-          RPA 생성
-        </button>
       </div>
 
+      {/* RPA 자동화 목록 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
-        {dashboardTasks.map((task, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            <div className="p-5 flex-grow">
-              <h3 className="text-lg font-bold text-blue-600">{task.title}</h3>
-              <div className="my-3">
-                <StatusBadge status={task.status} />
+        {rpaLogs.map((log, index) => {
+          // ✅ 우선순위: API의 status_name → 없으면 숫자 매핑 → 기본 '대기중'
+          const statusName = log.status_name || codeToName[log.STATUS_CODE] || '대기중';
+          const ts = log.updated_at || log.created_at; // 둘 중 있는 쪽 사용
+
+          return (
+            <div
+              key={index}
+              onClick={() => handleLogClick(log)}
+              className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col cursor-pointer hover:shadow-md transition-all ${
+                selectedLog?.TITLE === log.TITLE ? 'ring-2 ring-blue-400' : ''
+              }`}
+            >
+              <div className="p-5 flex-grow">
+                <h3 className="text-lg font-bold text-blue-600">{log.TITLE}</h3>
+
+                <div className="my-3">
+                  <StatusBadge name={statusName} />
+                </div>
+
+                {/* <p className="text-sm text-gray-600">
+                  <span className="font-semibold">ACTION:</span> {log.ACTION || '---'}
+                </p> */}
+
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-semibold">업데이트:</span>{' '}
+                  {ts ? new Date(ts).toLocaleString('ko-KR') : '---'}
+                </p>
               </div>
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">진행 중:</span> {task.stage}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                <span className="font-semibold">마감일:</span> {task.dueDate}
-              </p>
+
+              <div className="bg-[#6b7280] text-white text-center text-xs py-2 rounded-b-lg">
+                START
+              </div>
             </div>
-            <button className="bg-[#6b7280] font-bold w-full rounded-b-lg hover:bg-[#5b6270] transition-colors text-[0.75rem] text-white cursor-pointer">
-              {task.action}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* 로그 출력 섹션 */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">오늘의 알림</h2>
-        <div className="space-y-4">
-          {notifications.map((note, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-sm text-gray-700">
-              {note}
-            </div>
-          ))}
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          {selectedLog?.TITLE || 'RPA'} 로그
+        </h2>
+        <div className="space-y-3">
+          {selectedLog.LOG
+            ? selectedLog.LOG.split('\n')
+                .filter((line) => line.trim() !== '')
+                .map((line, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    {line}
+                  </div>
+                ))
+            : (
+              <div className="text-gray-400 text-sm">
+                로그 데이터가 없습니다.
+              </div>
+            )}
         </div>
       </div>
     </div>

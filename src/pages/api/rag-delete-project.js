@@ -2,6 +2,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 
 const execFileAsync = promisify(execFile);
 const CHROMA_PATH_DEFAULT = process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd';
@@ -77,11 +79,65 @@ if __name__ == "__main__":
     const result = JSON.parse(lines[lines.length - 1]);
 
     if (result.ok) {
+      // 프로젝트 삭제 성공 시 상태 파일에서 해당 프로젝트 제거
+      let stateFileUpdated = false;
+      try {
+        const safeCollectionName = collection.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const stateFileName = `github_repos_state_${safeCollectionName}.json`;
+        const stateFilePath = path.join(chromaPath, stateFileName);
+        
+        if (fs.existsSync(stateFilePath)) {
+          // 상태 파일 읽기
+          const stateData = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+          let updatedData = null;
+          
+          // 처리된 레포지토리 목록에서 해당 프로젝트 제거 (부분 매칭 지원)
+          if (Array.isArray(stateData)) {
+            const originalLength = stateData.length;
+            updatedData = stateData.filter(repo => {
+              // 정확한 매칭 또는 부분 매칭 (repo가 project로 끝나는 경우)
+              return repo !== project && !repo.endsWith(`/${project}`);
+            });
+            if (updatedData.length !== originalLength) {
+              fs.writeFileSync(stateFilePath, JSON.stringify(updatedData, null, 2));
+              stateFileUpdated = true;
+              console.log(`Removed project "${project}" from state file: ${stateFilePath}`);
+            }
+          } else if (stateData && Array.isArray(stateData.repos)) {
+            const originalLength = stateData.repos.length;
+            stateData.repos = stateData.repos.filter(repo => {
+              // 정확한 매칭 또는 부분 매칭 (repo가 project로 끝나는 경우)
+              return repo !== project && !repo.endsWith(`/${project}`);
+            });
+            if (stateData.repos.length !== originalLength) {
+              fs.writeFileSync(stateFilePath, JSON.stringify(stateData, null, 2));
+              stateFileUpdated = true;
+              console.log(`Removed project "${project}" from state file: ${stateFilePath}`);
+            }
+          }
+          
+          // 백업 파일 생성 (안전장치)
+          if (stateFileUpdated) {
+            const backupPath = `${stateFilePath}.backup.${Date.now()}`;
+            fs.writeFileSync(backupPath, JSON.stringify(stateData, null, 2));
+            console.log(`Created backup: ${backupPath}`);
+          }
+        } else {
+          console.log(`State file not found: ${stateFilePath}`);
+        }
+        
+      } catch (fileError) {
+        console.error('Error updating state file:', fileError);
+        // 파일 업데이트 실패 시에도 ChromaDB 삭제는 성공했으므로 경고만 출력
+        console.warn('Warning: State file update failed, but ChromaDB deletion succeeded');
+      }
+      
       return res.status(200).json({ 
         success: true, 
         message: 'Project deleted successfully', 
         deletedCount: result.deleted_count,
-        deletedIds: result.deleted_ids || []
+        deletedIds: result.deleted_ids || [],
+        stateFileUpdated: stateFileUpdated
       });
     } else {
       return res.status(500).json({ success: false, error: result.error || 'Failed to delete project from ChromaDB' });

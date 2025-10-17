@@ -107,17 +107,18 @@ function Setting() {
       const data = await safeParseJson(res);
       console.log('Collections API response:', data);
       
-      if (res.ok && data.success) {
-        const collections = data.items || [];
-        console.log('Setting collections:', collections);
-        setRagCollections(collections);
-        
-        if (!selectedCollectionId && collections.length > 0) {
-          const firstId = collections[0]._id || collections[0].id;
-          console.log('Auto-selecting first collection:', firstId);
-          setSelectedCollectionId(firstId);
-        }
-      } else {
+       if (res.ok && data.success) {
+         const collections = data.items || [];
+         console.log('Setting collections:', collections);
+         setRagCollections(collections);
+         
+         // 자동 선택 제거 - 사용자가 직접 선택하도록 함
+         // if (!selectedCollectionId && collections.length > 0) {
+         //   const firstId = collections[0]._id || collections[0].id;
+         //   console.log('Auto-selecting first collection:', firstId);
+         //   setSelectedCollectionId(firstId);
+         // }
+       } else {
         console.error('Failed to load collections:', data);
         console.error('Response status:', res.status);
         console.error('Response headers:', res.headers);
@@ -128,12 +129,13 @@ function Setting() {
           { _id: 'github_repos', name: 'github_repos' },
           { _id: 'docs_agent', name: 'docs_agent' }
         ];
-        console.log('Using default collections:', defaultCollections);
-        setRagCollections(defaultCollections);
-        
-        if (!selectedCollectionId && defaultCollections.length > 0) {
-          setSelectedCollectionId(defaultCollections[0]._id);
-        }
+         console.log('Using default collections:', defaultCollections);
+         setRagCollections(defaultCollections);
+         
+         // 자동 선택 제거 - 사용자가 직접 선택하도록 함
+         // if (!selectedCollectionId && defaultCollections.length > 0) {
+         //   setSelectedCollectionId(defaultCollections[0]._id);
+         // }
       }
     } catch (err) {
       console.error('컬렉션 로드 실패:', err);
@@ -144,12 +146,13 @@ function Setting() {
         { _id: 'github_repos', name: 'github_repos' },
         { _id: 'docs_agent', name: 'docs_agent' }
       ];
-      console.log('Using default collections due to error:', defaultCollections);
-      setRagCollections(defaultCollections);
-      
-      if (!selectedCollectionId && defaultCollections.length > 0) {
-        setSelectedCollectionId(defaultCollections[0]._id);
-      }
+       console.log('Using default collections due to error:', defaultCollections);
+       setRagCollections(defaultCollections);
+       
+       // 자동 선택 제거 - 사용자가 직접 선택하도록 함
+       // if (!selectedCollectionId && defaultCollections.length > 0) {
+       //   setSelectedCollectionId(defaultCollections[0]._id);
+       // }
     }
   };
 
@@ -158,13 +161,14 @@ function Setting() {
     try {
       const res = await fetch('/api/rag-collections?chroma=' + encodeURIComponent('/home/siwasoft/siwasoft/emd2'));
       const data = await safeParseJson(res);
-      if (res.ok && data.success) {
-        const collections = data.items || [];
-        setGitCollections(collections);
-        if (!selectedGitCollectionId && collections.length > 0) {
-          setSelectedGitCollectionId(collections[0]._id || collections[0].id);
-        }
-      }
+       if (res.ok && data.success) {
+         const collections = data.items || [];
+         setGitCollections(collections);
+         // 자동 선택 제거 - 사용자가 직접 선택하도록 함
+         // if (!selectedGitCollectionId && collections.length > 0) {
+         //   setSelectedGitCollectionId(collections[0]._id || collections[0].id);
+         // }
+       }
     } catch (err) {
       console.error('Git 컬렉션 로드 실패:', err);
     }
@@ -183,6 +187,7 @@ function Setting() {
       const data = await safeParseJson(res);
       if (res.ok && data.success) {
         console.log(`Found ${data.documents?.length || 0} documents for collection ${collectionId}:`, data.documents);
+        console.log('Sample document structure:', data.documents?.[0]);
         setGitEmbeddings(data.documents || []);
         if ((data.documents || []).length > 0) {
           setSelectedGitEmbeddingId(data.documents[0].id);
@@ -199,47 +204,281 @@ function Setting() {
     }
   };
 
-  // Git 임베딩을 트리뷰 형태로 그룹화
+  // Git 임베딩을 실제 디렉토리 구조로 트리화 (중복 제거)
   const getGitEmbeddingTree = () => {
-    const groups = {};
+    if (!gitEmbeddings || gitEmbeddings.length === 0) {
+      console.log('No gitEmbeddings data available');
+      return {};
+    }
     
-    gitEmbeddings.forEach(doc => {
+    const tree = {};
+    const fileMap = new Map(); // 파일 경로별로 첫 번째 문서만 저장
+    
+    console.log('=== Processing gitEmbeddings ===');
+    console.log('Total documents:', gitEmbeddings.length);
+    
+    // 1단계: 파일별로 첫 번째 문서만 선택 (중복 제거)
+    gitEmbeddings.forEach((doc, index) => {
       const filename = doc.filename || doc.name || doc.id;
-      console.log('Processing file:', filename, 'ID:', doc.id);
       
-      let repoName = '기타';
+      let repoName = 'siwasoftweb'; // 기본값
+      let filePath = filename;
       
-      // ID에서 레포지토리명 추출: "repo:FILE:path:001" -> "repo"
+      // ID에서 레포지토리명과 파일 경로 추출: "repo:FILE:path:001"
       if (doc.id && doc.id.includes(':')) {
         const parts = doc.id.split(':');
-        if (parts.length >= 1) {
+        
+        if (parts.length >= 3) {
           repoName = parts[0]; // 첫 번째 부분이 레포지토리명
+          // 세 번째 부분에서 파일 경로 추출 (언더스코어를 슬래시로 변환)
+          filePath = parts[2].replace(/_/g, '/');
+        } else if (parts.length >= 1) {
+          repoName = parts[0];
+          filePath = filename;
         }
-      }
-      // ID 패턴이 없으면 파일명에서 추출
-      else if (filename && filename !== 'document_1' && filename !== 'document_2') {
-        const parts = filename.split('/');
-        if (parts.length >= 2) {
-          // GitHub 스타일: user/repo/... 형태인지 확인
-          if (parts[0] && parts[1] && !parts[0].includes('.') && !parts[1].includes('.')) {
-            repoName = `${parts[0]}/${parts[1]}`;
-          } else {
-            // 일반 경로인 경우 첫 번째 디렉토리를 그룹으로 사용
-            repoName = parts[0] || '기타';
+      } else {
+        // ID 패턴이 없으면 파일명에서 추출
+        if (filename && filename !== 'document_1' && filename !== 'document_2') {
+          const parts = filename.split('/');
+          if (parts.length >= 2) {
+            repoName = parts[0] || 'siwasoftweb';
+            filePath = parts.slice(1).join('/');
+          } else if (parts.length === 1) {
+            repoName = 'siwasoftweb';
+            filePath = parts[0];
           }
-        } else if (parts.length === 1) {
-          repoName = parts[0] || '기타';
         }
       }
       
-      if (!groups[repoName]) {
-        groups[repoName] = [];
+      // 파일 경로를 키로 사용하여 중복 제거
+      const fileKey = `${repoName}/${filePath}`;
+      if (!fileMap.has(fileKey)) {
+        fileMap.set(fileKey, {
+          ...doc,
+          repoName,
+          filePath,
+          originalFilename: filename
+        });
       }
-      groups[repoName].push(doc);
+    });
+    
+    console.log(`After deduplication: ${fileMap.size} unique files`);
+    
+    // 2단계: 트리 구조 생성
+    fileMap.forEach((doc) => {
+      const { repoName, filePath } = doc;
+      
+      // 레포지토리 루트 생성
+      if (!tree[repoName]) {
+        tree[repoName] = { 
+          files: [], 
+          children: {}, 
+          type: 'repo',
+          totalFiles: 0 
+        };
+      }
+      
+      // 파일 경로를 디렉토리 구조로 파싱
+      const pathParts = filePath.split('/').filter(part => part.length > 0);
+      
+      if (pathParts.length === 0) {
+        // 루트 파일
+        tree[repoName].files.push(doc);
+      } else if (pathParts.length === 1) {
+        // 루트 레벨 파일
+        tree[repoName].files.push(doc);
+      } else {
+        // 중첩된 디렉토리 구조
+        let currentLevel = tree[repoName];
+        const fileName = pathParts[pathParts.length - 1];
+        const dirs = pathParts.slice(0, -1);
+        
+        // 디렉토리 구조 생성
+        dirs.forEach((dir) => {
+          if (!currentLevel.children[dir]) {
+            currentLevel.children[dir] = { 
+              files: [], 
+              children: {}, 
+              type: 'folder',
+              totalFiles: 0 
+            };
+          }
+          currentLevel = currentLevel.children[dir];
+        });
+        
+        // 마지막 디렉토리에 파일 추가
+        currentLevel.files.push(doc);
+      }
+    });
+    
+    // 3단계: 각 노드의 총 파일 수 계산 (하위 포함)
+    const calculateTotalFiles = (node) => {
+      let total = node.files.length;
+      Object.values(node.children).forEach(child => {
+        total += calculateTotalFiles(child);
+      });
+      node.totalFiles = total;
+      return total;
+    };
+    
+    Object.values(tree).forEach(repo => {
+      calculateTotalFiles(repo);
     });
 
-    console.log('Grouped embeddings:', groups);
-    return groups;
+    console.log('=== Final tree structure ===');
+    console.log(JSON.stringify(tree, null, 2));
+    return tree;
+  };
+
+  // 트리 노드 상태 관리
+  const [expandedNodes, setExpandedNodes] = useState(new Set());
+  
+  // 노드 확장/축소 토글
+  const toggleNode = (nodePath) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(nodePath)) {
+      newExpanded.delete(nodePath);
+    } else {
+      newExpanded.add(nodePath);
+    }
+    setExpandedNodes(newExpanded);
+  };
+  
+  // 트리 구조를 렌더링하는 함수 (커스텀 트리 컴포넌트)
+  const renderTreeNodes = (tree, level = 0, parentPath = '') => {
+    const nodes = [];
+    
+    Object.entries(tree).forEach(([name, node], index, array) => {
+      const isLast = index === array.length - 1;
+      const prefix = isLast ? '└─' : '├─';
+      const currentPath = parentPath ? `${parentPath}/${name}` : name;
+      const indent = '  '.repeat(level);
+      
+      if (node.type === 'repo') {
+        // 레포지토리 루트
+        const folderIcon = '📁';
+        const hasChildren = (node.files && node.files.length > 0) || (node.children && Object.keys(node.children).length > 0);
+        const isExpanded = expandedNodes.has(currentPath);
+        
+        nodes.push(
+          <div key={`repo-${name}-${currentPath}`} className={styles.treeNode}>
+            <div 
+              className={`${styles.treeNodeHeader} ${styles.treeRepoHeader} ${selectedGitEmbeddingId === `REPO:${name}` ? styles.selected : ''}`}
+              onClick={() => {
+                if (hasChildren) {
+                  toggleNode(currentPath);
+                }
+                setSelectedGitEmbeddingId(`REPO:${name}`);
+              }}
+            >
+              <span className={styles.treeIndent}>{indent}</span>
+              {hasChildren && (
+                <span className={styles.treeToggle}>
+                  {isExpanded ? '▼' : '▶'}
+                </span>
+              )}
+              <span className={styles.treeIcon}>{folderIcon}</span>
+              <span className={styles.treeName}>{name}/</span>
+              <span className={styles.treeCount}>({node.totalFiles}개 파일)</span>
+            </div>
+            
+            {/* 루트 파일들 */}
+            {isExpanded && node.files && node.files.length > 0 && (
+              <div className={styles.treeChildren}>
+                {node.files.map((file, fileIndex) => {
+                  const isLastFile = fileIndex === node.files.length - 1 && Object.keys(node.children).length === 0;
+                  const filePrefix = isLastFile ? '└─' : '├─';
+                  
+                  return (
+                    <div 
+                      key={`file-${file.id}-${currentPath}`}
+                      className={`${styles.treeFile} ${selectedGitEmbeddingId === file.id ? styles.selected : ''}`}
+                      onClick={() => setSelectedGitEmbeddingId(file.id)}
+                    >
+                      <span className={styles.treeIndent}>{indent}  </span>
+                      <span className={styles.treePrefix}>{filePrefix}</span>
+                      <span className={styles.treeFileName}>
+                        {file.originalFilename || file.filename || file.name || file.id}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* 하위 디렉토리들 */}
+            {isExpanded && node.children && Object.keys(node.children).length > 0 && (
+              <div className={styles.treeChildren}>
+                {renderTreeNodes(node.children, level + 1, currentPath)}
+              </div>
+            )}
+          </div>
+        );
+      } else if (node.type === 'folder') {
+        // 폴더
+        const folderIcon = '📂';
+        const hasChildren = (node.files && node.files.length > 0) || (node.children && Object.keys(node.children).length > 0);
+        const isExpanded = expandedNodes.has(currentPath);
+        
+        nodes.push(
+          <div key={`folder-${name}-${level}-${currentPath}`} className={styles.treeNode}>
+            <div 
+              className={`${styles.treeNodeHeader} ${styles.treeFolderHeader} ${selectedGitEmbeddingId === `FOLDER:${name}` ? styles.selected : ''}`}
+              onClick={() => {
+                if (hasChildren) {
+                  toggleNode(currentPath);
+                }
+                setSelectedGitEmbeddingId(`FOLDER:${name}`);
+              }}
+            >
+              <span className={styles.treeIndent}>{indent}</span>
+              <span className={styles.treePrefix}>{prefix}</span>
+              {hasChildren && (
+                <span className={styles.treeToggle}>
+                  {isExpanded ? '▼' : '▶'}
+                </span>
+              )}
+              <span className={styles.treeIcon}>{folderIcon}</span>
+              <span className={styles.treeName}>{name}/</span>
+              <span className={styles.treeCount}>({node.totalFiles}개 파일)</span>
+            </div>
+            
+            {/* 폴더 내 파일들 */}
+            {isExpanded && node.files && node.files.length > 0 && (
+              <div className={styles.treeChildren}>
+                {node.files.map((file, fileIndex) => {
+                  const isLastFile = fileIndex === node.files.length - 1 && Object.keys(node.children).length === 0;
+                  const filePrefix = isLastFile ? '└─' : '├─';
+                  
+                  return (
+                    <div 
+                      key={`file-${file.id}-${currentPath}`}
+                      className={`${styles.treeFile} ${selectedGitEmbeddingId === file.id ? styles.selected : ''}`}
+                      onClick={() => setSelectedGitEmbeddingId(file.id)}
+                    >
+                      <span className={styles.treeIndent}>{indent}  </span>
+                      <span className={styles.treePrefix}>{filePrefix}</span>
+                      <span className={styles.treeFileName}>
+                        {file.originalFilename || file.filename || file.name || file.id}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* 하위 폴더들 */}
+            {isExpanded && node.children && Object.keys(node.children).length > 0 && (
+              <div className={styles.treeChildren}>
+                {renderTreeNodes(node.children, level + 1, currentPath)}
+              </div>
+            )}
+          </div>
+        );
+      }
+    });
+    
+    return nodes;
   };
 
   // 프로젝트별 문서 개수 계산
@@ -258,12 +497,13 @@ function Setting() {
     try {
       const res = await fetch('/api/user-git-sources');
       const data = await safeParseJson(res);
-      if (res.ok && data.success) {
-        setSavedGitSources(data.items || []);
-        if (!selectedSavedGitId && (data.items || []).length > 0) {
-          setSelectedSavedGitId(data.items[0]._id);
-        }
-      }
+       if (res.ok && data.success) {
+         setSavedGitSources(data.items || []);
+         // 자동 선택 제거 - 사용자가 직접 선택하도록 함
+         // if (!selectedSavedGitId && (data.items || []).length > 0) {
+         //   setSelectedSavedGitId(data.items[0]._id);
+         // }
+       }
     } catch (err) {
       console.error('Git 소스 로드 실패:', err);
     }
@@ -1128,58 +1368,89 @@ function Setting() {
 
                {/* 임베딩 삭제 (Git 전용) */}
                <div className={styles.row}>
-                 <label className={styles.label}>임베딩 삭제</label>
+                 <label className={styles.label}>임베딩 </label>
                  <div className={styles.fields}>
-                   <select
-                     value={selectedGitEmbeddingId}
-                     onChange={(e) => setSelectedGitEmbeddingId(e.target.value)}
-                     className={`${styles.select} ${styles.gitEmbeddingSelect}`}
-                     disabled={isWorkingGit || !selectedGitCollectionId}
-                   >
-                     <option value="">임베딩 데이터를 선택하세요</option>
-                     {Object.entries(getGitEmbeddingTree()).map(([repoName, docs]) => (
-                       <React.Fragment key={repoName}>
-                         <option value={`PROJECT:${repoName}`} className={styles.treeOptionGroup}>
-                           📁 {repoName} ({getProjectDocumentCount(repoName)}개 문서)
-                         </option>
-                         {docs.map((d) => (
-                           <option key={d.id} value={d.id} className={styles.treeOptionItem}>
-                             └─ {d.filename || d.name || d.id}
-                           </option>
-                         ))}
-                       </React.Fragment>
-                     ))}
-                   </select>
+                   <div className={`${styles.treeContainer} ${isWorkingGit || !selectedGitCollectionId ? styles.disabled : ''}`}>
+                     <div className={styles.treeContent}>
+                       {(() => {
+                         const tree = getGitEmbeddingTree();
+                         console.log('Rendering tree:', tree);
+                         const nodes = renderTreeNodes(tree, 0, '');
+                         console.log('Generated nodes:', nodes.length, 'items');
+                         return nodes;
+                       })()}
+                     </div>
+                   </div>
                    <button
                      onClick={async () => {
                        if (!selectedGitCollectionId || !selectedGitEmbeddingId) return;
                        
-                       const isProjectDelete = selectedGitEmbeddingId.startsWith('PROJECT:');
-                       const projectName = isProjectDelete ? selectedGitEmbeddingId.replace('PROJECT:', '') : null;
-                       const docCount = isProjectDelete ? getProjectDocumentCount(projectName) : 1;
-                       
-                       const confirmMessage = isProjectDelete 
-                         ? `프로젝트 "${projectName}"의 모든 임베딩 (${docCount}개 문서)을 삭제하시겠습니까?`
-                         : '선택한 임베딩을 삭제하시겠습니까?';
+                        const isRepoDelete = selectedGitEmbeddingId.startsWith('REPO:');
+                        const isFolderDelete = selectedGitEmbeddingId.startsWith('FOLDER:');
+                        const repoName = isRepoDelete ? selectedGitEmbeddingId.replace('REPO:', '') : null;
+                        const folderName = isFolderDelete ? selectedGitEmbeddingId.replace('FOLDER:', '') : null;
+                        
+                        let docCount = 1;
+                        let confirmMessage = '선택한 임베딩을 삭제하시겠습니까?';
+                        
+                        if (isRepoDelete) {
+                          docCount = getProjectDocumentCount(repoName);
+                          confirmMessage = `레포지토리 "${repoName}"의 모든 임베딩 (${docCount}개 문서)을 삭제하시겠습니까?`;
+                        } else if (isFolderDelete) {
+                          // 폴더 삭제 시 해당 폴더의 파일 수 계산
+                          const tree = getGitEmbeddingTree();
+                          const findFolderCount = (node, targetFolder) => {
+                            if (node.children && node.children[targetFolder]) {
+                              return node.children[targetFolder].totalFiles;
+                            }
+                            for (const child of Object.values(node.children || {})) {
+                              const count = findFolderCount(child, targetFolder);
+                              if (count > 0) return count;
+                            }
+                            return 0;
+                          };
+                          
+                          for (const repo of Object.values(tree)) {
+                            const count = findFolderCount(repo, folderName);
+                            if (count > 0) {
+                              docCount = count;
+                              break;
+                            }
+                          }
+                          confirmMessage = `폴더 "${folderName}"의 모든 임베딩 (${docCount}개 문서)을 삭제하시겠습니까?`;
+                        }
                        
                        if (!confirm(confirmMessage)) return;
                        
                        try {
                          setIsWorkingGit(true);
                          
-                         if (isProjectDelete) {
-                           // 프로젝트 단위 삭제
-                           const res = await fetch(`/api/rag-delete-project?collection=${encodeURIComponent(selectedGitCollectionId)}&project=${encodeURIComponent(projectName)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
-                           const data = await safeParseJson(res);
-                           if (!res.ok || !data.success) throw new Error(data.error || '프로젝트 삭제 실패');
-                           alert(`프로젝트 "${projectName}"의 ${data.deletedCount}개 문서가 삭제되었습니다.`);
-                         } else {
-                           // 개별 문서 삭제
-                           const res = await fetch(`/api/rag-delete-document?collection=${encodeURIComponent(selectedGitCollectionId)}&id=${encodeURIComponent(selectedGitEmbeddingId)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
-                           const data = await safeParseJson(res);
-                           if (!res.ok || !data.success) throw new Error(data.error || '삭제 실패');
-                           alert('임베딩이 삭제되었습니다.');
-                         }
+                          if (isRepoDelete) {
+                            // 레포지토리 단위 삭제
+                            const res = await fetch(`/api/rag-delete-project?collection=${encodeURIComponent(selectedGitCollectionId)}&project=${encodeURIComponent(repoName)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+                            const data = await safeParseJson(res);
+                            if (!res.ok || !data.success) throw new Error(data.error || '레포지토리 삭제 실패');
+                            
+                            let message = `레포지토리 "${repoName}"의 ${data.deletedCount}개 문서가 삭제되었습니다.`;
+                            if (data.stateFileUpdated) {
+                              message += '\n컬렉션 상태 파일에서도 해당 레포지토리가 제거되었습니다.';
+                            } else {
+                              message += '\n(컬렉션 상태 파일에 해당 레포지토리가 등록되지 않아 업데이트를 건너뛰었습니다)';
+                            }
+                            alert(message);
+                          } else if (isFolderDelete) {
+                            // 폴더 단위 삭제 (기존 프로젝트 삭제 API 재사용)
+                            const res = await fetch(`/api/rag-delete-project?collection=${encodeURIComponent(selectedGitCollectionId)}&project=${encodeURIComponent(folderName)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+                            const data = await safeParseJson(res);
+                            if (!res.ok || !data.success) throw new Error(data.error || '폴더 삭제 실패');
+                            alert(`폴더 "${folderName}"의 ${data.deletedCount}개 문서가 삭제되었습니다.`);
+                          } else {
+                            // 개별 문서 삭제
+                            const res = await fetch(`/api/rag-delete-document?collection=${encodeURIComponent(selectedGitCollectionId)}&id=${encodeURIComponent(selectedGitEmbeddingId)}&chroma=${encodeURIComponent('/home/siwasoft/siwasoft/emd2')}`, { method: 'DELETE' });
+                            const data = await safeParseJson(res);
+                            if (!res.ok || !data.success) throw new Error(data.error || '삭제 실패');
+                            alert('임베딩이 삭제되었습니다.');
+                          }
                          
                          await loadGitEmbeddings(selectedGitCollectionId);
                          setSelectedGitEmbeddingId('');

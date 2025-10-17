@@ -1,6 +1,8 @@
 import { connectDB } from '@/Utils/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
+import fs from 'fs';
+import path from 'path';
 
 const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
 
@@ -169,6 +171,31 @@ export default async function handler(req, res) {
       }
       
       if (data.ok) {
+        // 컬렉션 삭제 성공 시 상태 파일도 삭제
+        try {
+          const chromaPath = chroma || '/home/siwasoft/siwasoft/emd2';
+          const safeCollectionName = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+          
+          // 가능한 상태 파일들
+          const possibleStateFiles = [
+            `github_repos_state_${safeCollectionName}.json`,
+            `${id}_state.json`,
+            `${safeCollectionName}_state.json`
+          ];
+          
+          possibleStateFiles.forEach(fileName => {
+            const filePath = path.join(chromaPath, fileName);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log(`Deleted state file: ${filePath}`);
+            }
+          });
+          
+        } catch (fileError) {
+          console.error('Error deleting state files:', fileError);
+          // 파일 삭제 실패는 전체 작업을 실패시키지 않음
+        }
+        
         return res.status(200).json({ 
           success: true, 
           deletedCount: 1,

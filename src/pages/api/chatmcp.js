@@ -15,12 +15,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    if (!tool || !['chatbot', 'embed'].includes(tool)) {
-      return res.status(400).json({ error: 'Tool must be either "chatbot" or "embed"' });
+    if (!tool || !['chatbot', 'embed', 'gitagent'].includes(tool)) {
+      return res.status(400).json({ error: 'Tool must be one of: "chatbot", "embed", "gitagent"' });
     }
 
     // FastAPI 백엔드 엔드포인트 결정
-    const endpoint = tool === 'chatbot' ? '/chatbot' : '/embed';
+    const endpoint = tool === 'chatbot' ? '/chatbot' : tool === 'embed' ? '/embed' : '/gitagent';
     const url = `http://localhost:8000${endpoint}`;
     console.log('Calling FastAPI endpoint:', url);
 
@@ -29,8 +29,8 @@ export default async function handler(req, res) {
       query: query
     });
 
-    // embed 모드일 때 with_answer 파라미터 추가
-    if (tool === 'embed') {
+    // embed 또는 gitagent 모드일 때 with_answer 파라미터 추가
+    if (tool === 'embed' || tool === 'gitagent') {
       body.append('with_answer', with_answer ? 'true' : 'false');
     }
 

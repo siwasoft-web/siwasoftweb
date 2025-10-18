@@ -11,7 +11,7 @@ function AiLlmPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState('chatbot'); // 'chatbot' or 'embed'
+  const [selectedTool, setSelectedTool] = useState('chatbot'); // 'chatbot', 'embed', or 'gitagent'
   const [withAnswer, setWithAnswer] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
   const [responseTime, setResponseTime] = useState(null);
@@ -639,7 +639,7 @@ function AiLlmPage() {
               <div>
                 <h2 className="font-bold text-lg text-gray-800">AI Assistant</h2>
                 <p className="text-sm text-gray-500">
-                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : 'RAG 검색 모드'}
+                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : 'Git Agent 모드'}
                 </p>
               </div>
               <div className="relative dropdown-container">
@@ -648,7 +648,7 @@ function AiLlmPage() {
                   className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
                 >
                   <FileUp size={16} />
-                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : 'RAG 검색 모드'}
+                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : 'Git Agent 모드'}
                   <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -698,9 +698,32 @@ function AiLlmPage() {
                           </div>
                         </div>
                       </div>
+                      
+                      <div
+                        onClick={() => {
+                          setSelectedTool('gitagent');
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedTool === 'gitagent'
+                            ? 'bg-blue-50 border border-blue-200'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <svg className="text-purple-600" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-800 text-sm">Git Agent</h4>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
-                    {selectedTool === 'embed' && (
+                    {(selectedTool === 'embed' || selectedTool === 'gitagent') && (
                       <div className="p-3 border-t border-gray-200 bg-gray-50">
                         <label className="flex items-center gap-2 text-sm text-gray-700">
                           <input
@@ -712,13 +735,18 @@ function AiLlmPage() {
                           AI 답변 생성 (권장)
                         </label>
                         <p className="text-xs text-gray-500 mt-1">
-                          {withAnswer 
-                            ? "검색된 문서를 바탕으로 AI가 최종 답변을 생성합니다" 
-                            : "검색 결과 목록만 표시합니다"
+                          {selectedTool === 'gitagent' 
+                            ? (withAnswer 
+                                ? "GitHub 소스코드를 분석하여 AI가 최종 답변을 생성합니다" 
+                                : "검색된 소스코드 목록만 표시합니다")
+                            : (withAnswer 
+                                ? "검색된 문서를 바탕으로 AI가 최종 답변을 생성합니다" 
+                                : "검색 결과 목록만 표시합니다")
                           }
                         </p>
                       </div>
                     )}
+                    
                   </div>
                 )}
               </div>

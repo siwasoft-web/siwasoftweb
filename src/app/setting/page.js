@@ -45,6 +45,16 @@ function Setting() {
   const [carbonDocuments, setCarbonDocuments] = useState([]);
   const [selectedPdfRagCollection, setSelectedPdfRagCollection] = useState('');
   const [selectedCarbonCollection, setSelectedCarbonCollection] = useState('');
+  
+  // Admin 탭 상태
+  const [sites, setSites] = useState([
+    { id: 1, name: '시와소프트', code: 'SIWA001' },
+    { id: 2, name: '테스트회사', code: 'TEST001' },
+    { id: 3, name: '샘플회사', code: 'SAMP001' }
+  ]);
+  const [newSiteName, setNewSiteName] = useState('');
+  const [newSiteCode, setNewSiteCode] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // 공통: 안전한 JSON 파서
   const safeParseJson = async (response) => {
@@ -971,6 +981,32 @@ function Setting() {
     }
   };
 
+  // 새 사이트 추가
+  const handleAddSite = () => {
+    if (!newSiteName.trim() || !newSiteCode.trim()) {
+      alert('회사명과 회사코드를 모두 입력하세요.');
+      return;
+    }
+    
+    const newSite = {
+      id: Date.now(),
+      name: newSiteName.trim(),
+      code: newSiteCode.trim().toUpperCase()
+    };
+    
+    setSites([...sites, newSite]);
+    setNewSiteName('');
+    setNewSiteCode('');
+    setShowAddForm(false);
+  };
+
+  // 사이트 삭제
+  const handleDeleteSite = (id) => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      setSites(sites.filter(site => site.id !== id));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1599,80 +1635,123 @@ function Setting() {
                 
                 {/* 사이트 목록 테이블 */}
                 <div className="mb-10">
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr>
-                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">회사명</th>
-                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">회사코드</th>
-                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">확인</th>
-                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">기능</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-4 text-sm text-gray-900">시와소프트</td>
-                          <td className="px-3 py-4 text-sm text-gray-900">SIWA001</td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
+                  <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                              회사명
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                              회사코드
+                            </th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
                               확인
-                            </button>
-                          </td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
-                              수정
-                            </button>
-                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-4 text-sm text-gray-900">테스트회사</td>
-                          <td className="px-3 py-4 text-sm text-gray-900">TEST001</td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
-                              확인
-                            </button>
-                          </td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
-                              수정
-                            </button>
-                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-3 py-4 text-sm text-gray-900">샘플회사</td>
-                          <td className="px-3 py-4 text-sm text-gray-900">SAMP001</td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
-                              확인
-                            </button>
-                          </td>
-                          <td className="px-3 py-4 text-sm">
-                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
-                              수정
-                            </button>
-                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                            </th>
+                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
+                              기능
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-100">
+                          {sites.map((site) => (
+                            <tr key={site.id} className="hover:bg-gray-50 transition-colors duration-200 group">
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-800">{site.name}</div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
+                                  {site.code}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-emerald-400 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                  확인
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                    수정
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteSite(site.id)}
+                                    className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   
+                  {/* 사이트 개수 표시 */}
+                  <div className="mt-4 max-w-4xl">
+                    <p className="text-sm text-gray-600">
+                      총 {sites.length}건 표시 중 (원본 {sites.length}건)
+                    </p>
+                  </div>
+                  
+                  {/* 새 사이트 추가 폼 */}
+                  {showAddForm && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-4xl">
+                      <h5 className="text-lg font-semibold text-gray-800 mb-4">새 사이트 추가</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">회사명</label>
+                          <input
+                            type="text"
+                            value={newSiteName}
+                            onChange={(e) => setNewSiteName(e.target.value)}
+                            placeholder="회사명을 입력하세요"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">회사코드</label>
+                          <input
+                            type="text"
+                            value={newSiteCode}
+                            onChange={(e) => setNewSiteCode(e.target.value.toUpperCase())}
+                            placeholder="회사코드를 입력하세요"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <button
+                          onClick={() => setShowAddForm(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        >
+                          취소
+                        </button>
+                        <button
+                          onClick={handleAddSite}
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          추가
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* 새 사이트 추가 버튼 */}
-                  <div className="mt-4 flex justify-end gap-2">
-                    <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors flex items-center gap-2">
-                      <Plus size={16} />
-                      새 사이트 추가
+                  <div className="mt-2 flex justify-end max-w-4xl">
+                    <button 
+                      onClick={() => setShowAddForm(!showAddForm)}
+                      className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <Plus size={18} className="mr-2" />
+                      {showAddForm ? '추가 취소' : '사이트 생성'}
                     </button>
                   </div>
                 </div>
+                  <hr className="my-6 border-0 h-px bg-gray-200" />
               </div>
             )}
         </div>

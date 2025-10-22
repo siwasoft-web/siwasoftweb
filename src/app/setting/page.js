@@ -1593,13 +1593,88 @@ function Setting() {
             </div>
           )}
 
-          {activeTab === 'admin' && (
-            <div>
-              <h3 className={styles.pageTitle}>사이트 목록</h3>
-              
-              
-            </div>
-          )}
+            {activeTab === 'admin' && (
+              <div>
+                <h3 className={styles.pageTitle}>사이트 목록</h3>
+                
+                {/* 사이트 목록 테이블 */}
+                <div className="mb-10">
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr>
+                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">회사명</th>
+                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">회사코드</th>
+                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">확인</th>
+                          <th className="bg-gray-50 px-3 py-4 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">기능</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-4 text-sm text-gray-900">시와소프트</td>
+                          <td className="px-3 py-4 text-sm text-gray-900">SIWA001</td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
+                              확인
+                            </button>
+                          </td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
+                              수정
+                            </button>
+                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-4 text-sm text-gray-900">테스트회사</td>
+                          <td className="px-3 py-4 text-sm text-gray-900">TEST001</td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
+                              확인
+                            </button>
+                          </td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
+                              수정
+                            </button>
+                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                        <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-4 text-sm text-gray-900">샘플회사</td>
+                          <td className="px-3 py-4 text-sm text-gray-900">SAMP001</td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-full hover:bg-green-700 transition-colors">
+                              확인
+                            </button>
+                          </td>
+                          <td className="px-3 py-4 text-sm">
+                            <button className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors mr-2">
+                              수정
+                            </button>
+                            <button className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors">
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* 새 사이트 추가 버튼 */}
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors flex items-center gap-2">
+                      <Plus size={16} />
+                      새 사이트 추가
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
     </div>

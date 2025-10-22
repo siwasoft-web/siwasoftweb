@@ -1639,18 +1639,30 @@ function Setting() {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-100">
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
-                              회사명
+                          <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 shadow-sm">
+                            <th className="px-6 py-5 text-left text-sm font-extrabold text-blue-900 uppercase tracking-widest">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                회사명
+                              </div>
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
-                              회사코드
+                            <th className="px-6 py-5 text-left text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                회사코드
+                              </div>
                             </th>
-                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
-                              확인
+                            <th className="px-6 py-5 text-center text-sm font-extrabold text-emerald-900 uppercase tracking-widest">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                확인
+                              </div>
                             </th>
-                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 uppercase tracking-wide border-b border-gray-200">
-                              기능
+                            <th className="px-6 py-5 text-center text-sm font-extrabold text-purple-900 uppercase tracking-widest">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                기능
+                              </div>
                             </th>
                           </tr>
                         </thead>
@@ -1666,7 +1678,7 @@ function Setting() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
-                                <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full text-white bg-emerald-400 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-full text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md">
                                   확인
                                 </button>
                               </td>

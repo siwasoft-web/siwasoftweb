@@ -1704,7 +1704,7 @@ function Setting() {
                   
                   {/* 사이트 개수 표시 */}
                   <div className="mt-4 max-w-4xl">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs text-gray-400">
                       총 {sites.length}건 표시 중 (원본 {sites.length}건)
                     </p>
                   </div>

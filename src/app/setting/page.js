@@ -7,7 +7,7 @@ import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 
 function Setting() {
-  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents'
+  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents' | 'admin'
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1011,6 +1011,12 @@ function Setting() {
             >
               Documents
             </button>
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`${styles.tabButton} ${activeTab==='admin' ? styles.tabButtonActive : ''}`}
+            >
+              Admin
+            </button>
           </div>
         </div>
 
@@ -1584,6 +1590,14 @@ function Setting() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'admin' && (
+            <div>
+              <h3 className={styles.pageTitle}>사이트 목록</h3>
+              
+              
             </div>
           )}
         </div>

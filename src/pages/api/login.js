@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { connectDB } from "@/util/db";
+import { connectDB } from "../../util/db";
 
 const dbName = process.env.DB_NAME || "siwasoftweb";
 

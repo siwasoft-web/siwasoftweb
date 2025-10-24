@@ -26,11 +26,11 @@ export default async function handler(req, res) {
     if (tool === 'img') {
       defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
       filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://localhost:8001/img';
+      apiEndpoint = 'http://221.139.227.131:8001/img';
     } else {
       defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
       filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://localhost:8001/pdf';
+      apiEndpoint = 'http://221.139.227.131:8001/pdf';
     }
 
     // 파일 존재 확인

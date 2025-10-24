@@ -8,7 +8,7 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
-const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
+const EMB_API_BASE = process.env.EMB_API_BASE || 'http://221.139.227.131:8001';
 const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/end';
 const OUTPUT_DIR = process.env.OUTPUT_DIR || '/home/siwasoft/siwasoft/mcp/out';
 const CHROMA_PATH_DEFAULT = process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd';

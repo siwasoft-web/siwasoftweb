@@ -6,7 +6,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
-const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
+const EMB_API_BASE = process.env.EMB_API_BASE || 'http://221.139.227.131:8001';
 const CARBON_DIR = process.env.CARBON_DIR || '/home/siwasoft/siwasoft/carbon';
 const CHROMA_PATH = process.env.CHROMA_PATH || '/home/siwasoft/siwasoft/emd';
 

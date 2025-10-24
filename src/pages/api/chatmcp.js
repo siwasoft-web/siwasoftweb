@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     // FastAPI 백엔드 엔드포인트 결정
     const endpoint = tool === 'chatbot' ? '/chatbot' : tool === 'embed' ? '/embed' : '/gitagent';
-    const url = `http://0.0.0.0:8000${endpoint}`;
+    const url = `http://127.0.0.1:8000${endpoint}`;
     console.log('Calling FastAPI endpoint:', url);
 
     // 요청 바디 구성

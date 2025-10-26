@@ -74,7 +74,18 @@ export default async function handler(req, res) {
 
     const fastApiResult = await fastApiResponse.json();
 
-    // 모든 환경에서 동일하게 처리
+    // Vercel 환경에서는 FastAPI 결과를 직접 반환 (파일 시스템 접근 불가)
+    if (isVercel) {
+      return res.status(200).json({
+        success: true,
+        message: `${tool.toUpperCase()} 처리가 완료되었습니다`,
+        text: fastApiResult.text || '텍스트 추출 결과가 없습니다.',
+        table: fastApiResult.table || '테이블 추출 결과가 없습니다.',
+        fastApiResult: fastApiResult
+      });
+    }
+
+    // 로컬 환경: 기존 방식대로 파일 시스템에서 결과 읽기
     // 툴에 따른 응답 처리
     switch (tool) {
       case 'pdf':

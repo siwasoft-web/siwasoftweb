@@ -49,22 +49,41 @@ export default async function handler(req, res) {
     // 원본 파일명 사용 (안전성을 위해 경로 조작 방지)
     const originalFilename = filename || `upload_${Date.now()}${fileExtension}`;
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
-    const targetPath = path.join(targetDir, safeFilename);
 
-    // 대상 폴더가 없으면 생성
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
+    // 환경 확인: Vercel 배포 환경인지 체크
+    const isVercel = process.env.VERCEL === '1';
+    
+    if (isVercel) {
+      // Vercel 환경에서는 파일을 저장하지 않고 메타데이터만 반환
+      console.log('Vercel 환경: 파일 저장 건너뛰기');
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: null, // 파일 경로 없음
+        isVercel: true,
+        base64Data: base64Data // OCR API에서 직접 사용할 수 있도록 반환
+      });
+    } else {
+      // 로컬 환경에서는 기존 방식대로 파일 저장
+      const targetPath = path.join(targetDir, safeFilename);
+
+      // 대상 폴더가 없으면 생성
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      // 파일 저장
+      fs.writeFileSync(targetPath, buffer);
+
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: targetPath,
+        isVercel: false
+      });
     }
-
-    // 파일 저장
-    fs.writeFileSync(targetPath, buffer);
-
-    res.status(200).json({ 
-      success: true, 
-      filename: safeFilename,
-      originalFilename: originalFilename,
-      path: targetPath 
-    });
 
   } catch (error) {
     console.error('PDF 업로드 오류:', error);

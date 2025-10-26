@@ -112,16 +112,24 @@ function AiOcrPage() {
           
           const uploadResult = await uploadResponse.json();
           
-          // 3. OCR 실행
+          // 3. OCR 실행 (Vercel 환경 고려)
+          const ocrRequestBody = {
+            filename: uploadResult.filename,
+            tool: selectedTool
+          };
+          
+          // Vercel 환경인 경우 Base64 데이터도 함께 전송
+          if (uploadResult.isVercel && uploadResult.base64Data) {
+            ocrRequestBody.base64Data = uploadResult.base64Data;
+            ocrRequestBody.isVercel = true;
+          }
+          
           const ocrResponse = await fetch('/api/ocrmcp', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              filename: uploadResult.filename,
-              tool: selectedTool
-            }),
+            body: JSON.stringify(ocrRequestBody),
           });
           
           if (!ocrResponse.ok) {

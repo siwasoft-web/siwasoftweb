@@ -54,54 +54,35 @@ export default async function handler(req, res) {
     const isVercel = process.env.VERCEL === '1';
     
     if (isVercel) {
-      // Vercel 환경: 우리 서버에 파일 저장
+      // Vercel 환경: 우리 서버에 파일 저장 (기존 방식과 동일)
       console.log('Vercel 환경: 우리 서버에 파일 저장');
       
-      try {
-        // 우리 서버의 파일 저장 API 호출
-        const serverUrl = process.env.API_BASE_URL || 'http://221.139.227.131:8000';
-        const saveResponse = await fetch(`${serverUrl}/save-file`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            filename: safeFilename,
-            file_data: base64Data,
-            file_type: tool === 'pdf' ? 'pdf' : 'image',
-            target_dir: targetDir
-          })
-        });
-
-        if (!saveResponse.ok) {
-          throw new Error(`서버 파일 저장 실패: ${saveResponse.status}`);
-        }
-
-        const saveResult = await saveResponse.json();
-        console.log('서버 파일 저장 완료:', saveResult);
-
-        res.status(200).json({ 
-          success: true, 
+      // 우리 서버에 직접 파일 저장 요청
+      const serverUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
+      const saveResponse = await fetch(`${serverUrl}/save-file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           filename: safeFilename,
-          originalFilename: originalFilename,
-          path: saveResult.file_path,
-          isVercel: true,
-          serverSaved: true
-        });
-      } catch (error) {
-        console.error('서버 파일 저장 오류:', error);
-        // 서버 저장 실패 시 Base64 데이터로 fallback
-        res.status(200).json({ 
-          success: true, 
-          filename: safeFilename,
-          originalFilename: originalFilename,
-          path: null,
-          isVercel: true,
-          base64Data: base64Data,
-          serverSaved: false,
-          error: error.message
-        });
+          file_data: base64Data,
+          target_dir: targetDir
+        })
+      });
+
+      if (!saveResponse.ok) {
+        console.error('서버 파일 저장 실패:', saveResponse.status);
+        // 저장 실패 시에도 계속 진행 (우리 서버에서 처리)
       }
+
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: path.join(targetDir, safeFilename), // 예상 경로
+        isVercel: true
+      });
     } else {
       // 로컬 환경에서는 기존 방식대로 파일 저장
       const targetPath = path.join(targetDir, safeFilename);

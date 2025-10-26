@@ -588,27 +588,11 @@ function Setting() {
             if (!uploadResponse.ok) throw new Error('파일 업로드 실패');
             const uploadResult = await uploadResponse.json();
             
-            // 2) OCR 실행하여 텍스트 추출 (Vercel 환경 고려)
+            // 2) OCR 실행하여 텍스트 추출
             const ocrRequestBody = {
               filename: uploadResult.filename, 
               tool: 'pdf'
             };
-            
-            // Vercel 환경인 경우 처리 방식 결정
-            if (uploadResult.isVercel) {
-              ocrRequestBody.isVercel = true;
-              
-              if (uploadResult.serverSaved) {
-                // 서버에 저장된 경우
-                ocrRequestBody.serverSaved = true;
-                console.log('서버에 저장된 파일로 OCR 처리');
-              } else if (uploadResult.base64Data) {
-                // 서버 저장 실패 시 Base64 데이터 사용
-                ocrRequestBody.base64Data = uploadResult.base64Data;
-                ocrRequestBody.serverSaved = false;
-                console.log('Base64 데이터로 OCR 처리 (fallback)');
-              }
-            }
             
             const ocrResponse = await fetch('/api/ocrmcp', {
               method: 'POST',

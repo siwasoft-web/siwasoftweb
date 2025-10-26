@@ -25,18 +25,9 @@ export default async function handler(req, res) {
     
     let apiEndpoint, requestBody;
 
-    if (isVercel && base64Data && !req.body.serverSaved) {
-      // Vercel 환경: Base64 데이터를 직접 전송 (서버 저장 실패 시 fallback)
-      console.log('Vercel 환경: Base64 데이터 직접 전송 (fallback)');
-      apiEndpoint = `${baseUrl}/${tool}`;
-      requestBody = {
-        base64_data: base64Data,
-        filename: filename,
-        out_dir: out_dir || '/tmp/ocr_output'
-      };
-    } else if (isVercel && req.body.serverSaved) {
-      // Vercel 환경: 서버에 저장된 파일 사용
-      console.log('Vercel 환경: 서버에 저장된 파일 사용');
+    if (isVercel) {
+      // Vercel 환경: 기존 방식과 동일하게 파일 경로 기반으로 처리
+      console.log('Vercel 환경: 파일 경로 기반 OCR 처리');
       let defaultTargetDir;
       
       if (tool === 'img') {

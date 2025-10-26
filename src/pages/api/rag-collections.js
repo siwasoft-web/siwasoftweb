@@ -4,7 +4,7 @@ import { authOptions } from './auth/[...nextauth]';
 import fs from 'fs';
 import path from 'path';
 
-const EMB_API_BASE = process.env.EMB_API_BASE || 'http://localhost:8001';
+const EMB_API_BASE = process.env.EMB_API_BASE || 'http://221.139.227.131:8001';
 
 export default async function handler(req, res) {
   console.log('RAG collections API called:', req.method);

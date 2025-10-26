@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { filename, tool, target_dir, out_dir, recursive } = req.body;
+    const { filename, tool, target_dir, out_dir, recursive, base64Data } = req.body;
     
     // 디버깅을 위한 로깅
     console.log('OCR MCP 요청:', { filename, tool, target_dir, out_dir, recursive });
@@ -20,47 +20,84 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Tool must be one of: "pdf", "img"' });
     }
 
-    // 파일 경로 설정 (툴에 따라 다름)
-    let filePath, apiEndpoint, defaultTargetDir;
+    // 환경 변수에서 API 베이스 URL 가져오기 (fallback으로 IP 사용)
+    const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
+    const isVercel = process.env.VERCEL === '1';
     
-    if (tool === 'img') {
-      defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
-      filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://localhost:8001/img';
+    // Vercel 환경과 로컬 환경을 다르게 처리
+    let apiEndpoint, requestBody;
+    
+    if (isVercel && base64Data) {
+      // Vercel 환경: Base64 데이터를 직접 우리 서버로 전송
+      console.log('Vercel 환경: Base64 데이터 직접 전송');
+      apiEndpoint = `${baseUrl}/${tool}`;
+      requestBody = {
+        base64_data: base64Data,
+        filename: filename,
+        out_dir: '/home/siwasoft/siwasoft/mcp/out'
+      };
     } else {
-      defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
-      filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://localhost:8001/pdf';
+      // 로컬 환경: 기존 방식 (파일 경로 기반)
+      let filePath, defaultTargetDir;
+      
+      if (tool === 'img') {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
+        filePath = path.join(target_dir || defaultTargetDir, filename);
+        apiEndpoint = `${baseUrl}/img`;
+      } else {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
+        filePath = path.join(target_dir || defaultTargetDir, filename);
+        apiEndpoint = `${baseUrl}/pdf`;
+      }
+
+      // 파일 존재 확인
+      console.log('파일 경로 확인:', filePath);
+      console.log('파일 존재 여부:', fs.existsSync(filePath));
+      
+      if (!fs.existsSync(filePath)) {
+        console.log('파일을 찾을 수 없음:', filePath);
+        return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${filePath}` });
+      }
+
+      requestBody = {
+        target_dir: target_dir || defaultTargetDir,
+        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+        recursive: recursive || false
+      };
     }
 
-    // 파일 존재 확인
-    console.log('파일 경로 확인:', filePath);
-    console.log('파일 존재 여부:', fs.existsSync(filePath));
-    
-    if (!fs.existsSync(filePath)) {
-      console.log('파일을 찾을 수 없음:', filePath);
-      return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${filePath}` });
-    }
+    // FastAPI 서버에 요청 보내기
+    console.log('API 엔드포인트:', apiEndpoint);
+    console.log('요청 바디:', requestBody);
 
-    // FastAPI 서버 (포트 8001)에 요청 보내기
     const fastApiResponse = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        target_dir: target_dir || defaultTargetDir,
-        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-        recursive: recursive || false
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!fastApiResponse.ok) {
-      throw new Error(`FastAPI 서버 오류: ${fastApiResponse.status}`);
+      const errorText = await fastApiResponse.text();
+      console.error('FastAPI 오류 응답:', errorText);
+      throw new Error(`Backend API error: ${fastApiResponse.status} - ${errorText}`);
     }
 
     const fastApiResult = await fastApiResponse.json();
 
+    // Vercel 환경에서는 FastAPI 결과를 직접 반환 (파일 시스템 접근 불가)
+    if (isVercel) {
+      return res.status(200).json({
+        success: true,
+        message: `${tool.toUpperCase()} 처리가 완료되었습니다`,
+        text: fastApiResult.text || '텍스트 추출 결과가 없습니다.',
+        table: fastApiResult.table || '테이블 추출 결과가 없습니다.',
+        fastApiResult: fastApiResult
+      });
+    }
+
+    // 로컬 환경: 기존 방식대로 파일 시스템에서 결과 읽기
     // 툴에 따른 응답 처리
     switch (tool) {
       case 'pdf':

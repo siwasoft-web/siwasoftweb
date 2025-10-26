@@ -49,22 +49,39 @@ export default async function handler(req, res) {
     // 원본 파일명 사용 (안전성을 위해 경로 조작 방지)
     const originalFilename = filename || `upload_${Date.now()}${fileExtension}`;
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
-    const targetPath = path.join(targetDir, safeFilename);
+    const isVercel = process.env.VERCEL === '1';
 
-    // 대상 폴더가 없으면 생성
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
+    if (isVercel) {
+      // Vercel 환경: Base64 데이터를 직접 반환
+      console.log('Vercel 환경: Base64 데이터 직접 반환');
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: null,
+        isVercel: true,
+        base64Data: base64Data
+      });
+    } else {
+      // 로컬 환경: 기존 방식대로 파일 저장
+      const targetPath = path.join(targetDir, safeFilename);
+
+      // 대상 폴더가 없으면 생성
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      // 파일 저장
+      fs.writeFileSync(targetPath, buffer);
+
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: targetPath,
+        isVercel: false
+      });
     }
-
-    // 파일 저장
-    fs.writeFileSync(targetPath, buffer);
-
-    res.status(200).json({ 
-      success: true, 
-      filename: safeFilename,
-      originalFilename: originalFilename,
-      path: targetPath 
-    });
 
   } catch (error) {
     console.error('PDF 업로드 오류:', error);

@@ -65,6 +65,8 @@ function Setting() {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectCode, setNewProjectCode] = useState('');
   const [newProjectUsers, setNewProjectUsers] = useState('');
+  const [siteSearchTerm, setSiteSearchTerm] = useState('');
+  const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [siteProjects, setSiteProjects] = useState([
     { 
       id: 1, 
@@ -1077,6 +1079,18 @@ function Setting() {
     setShowUsersModal(true);
   };
 
+  // 사이트 필터링
+  const filteredSites = sites.filter(site => 
+    site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+    site.code.toLowerCase().includes(siteSearchTerm.toLowerCase())
+  );
+
+  // 프로젝트 필터링
+  const filteredProjects = siteProjects.filter(project =>
+    project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+    project.code.toLowerCase().includes(projectSearchTerm.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1703,9 +1717,26 @@ function Setting() {
               <div>
                 {/* 제목 - 조건부 렌더링 */}
                 {!selectedSiteId ? (
-                  <h3 className={styles.pageTitle}>사이트 목록</h3>
+                  <div className="flex items-center justify-between mb-2 max-w-4xl">
+                    <h3 className={styles.pageTitle}>사이트 목록</h3>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={siteSearchTerm}
+                        onChange={(e) => setSiteSearchTerm(e.target.value)}
+                        placeholder="회사명, 코드 검색..."
+                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        onClick={() => setSiteSearchTerm('')}
+                        className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between mb-2 max-w-4xl">
                     <button
                       onClick={() => setSelectedSiteId(null)}
                       className={`flex items-center gap-2 hover:text-blue-600 transition-colors group ${styles.pageTitle}`}
@@ -1713,6 +1744,21 @@ function Setting() {
                       <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
                       <span>프로젝트 목록</span>
                     </button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={projectSearchTerm}
+                        onChange={(e) => setProjectSearchTerm(e.target.value)}
+                        placeholder="프로젝트명, 코드 검색..."
+                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        onClick={() => setProjectSearchTerm('')}
+                        className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+                      >
+                        초기화
+                      </button>
+                    </div>
                   </div>
                 )}
                 
@@ -1751,7 +1797,7 @@ function Setting() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
-                          {sites.map((site) => (
+                          {filteredSites.map((site) => (
                             <tr key={site.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-800">{site.name}</div>
@@ -1796,7 +1842,7 @@ function Setting() {
                   {/* 사이트 개수 표시 */}
                   <div className="mt-4 max-w-4xl">
                     <p className="text-xs text-gray-400">
-                      총 {sites.length}건 표시 중 (원본 {sites.length}건)
+                      총 {filteredSites.length}건 표시 중 (원본 {sites.length}건)
                     </p>
                   </div>
                   
@@ -1868,7 +1914,7 @@ function Setting() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-100">
-                            {siteProjects.map((project) => (
+                            {filteredProjects.map((project) => (
                               <tr key={project.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                                 <td className="px-4 py-3">
                                   <div className="text-sm font-medium text-gray-800 truncate" title={project.name}>{project.name}</div>
@@ -1917,7 +1963,7 @@ function Setting() {
                     {/* 프로젝트 개수 표시 */}
                     <div className="mt-4 max-w-4xl">
                       <p className="text-xs text-gray-400">
-                        총 {siteProjects.length}건 표시 중 (원본 {siteProjects.length}건)
+                        총 {filteredProjects.length}건 표시 중 (원본 {siteProjects.length}건)
                       </p>
                     </div>
                     

@@ -50,59 +50,25 @@ export default async function handler(req, res) {
     const originalFilename = filename || `upload_${Date.now()}${fileExtension}`;
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
 
-    // 환경 확인: Vercel 배포 환경인지 체크
-    const isVercel = process.env.VERCEL === '1';
-    
-    if (isVercel) {
-      // Vercel 환경: 우리 서버에 파일 저장 (기존 방식과 동일)
-      console.log('Vercel 환경: 우리 서버에 파일 저장');
-      
-      // 우리 서버에 직접 파일 저장 요청
-      const serverUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
-      const saveResponse = await fetch(`${serverUrl}/save-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: safeFilename,
-          file_data: base64Data,
-          target_dir: targetDir
-        })
-      });
+    // 모든 환경에서 동일하게 처리 (기존 방식)
+    const targetPath = path.join(targetDir, safeFilename);
 
-      if (!saveResponse.ok) {
-        console.error('서버 파일 저장 실패:', saveResponse.status);
-        // 저장 실패 시에도 계속 진행 (우리 서버에서 처리)
-      }
-
-      res.status(200).json({ 
-        success: true, 
-        filename: safeFilename,
-        originalFilename: originalFilename,
-        path: path.join(targetDir, safeFilename), // 예상 경로
-        isVercel: true
-      });
-    } else {
-      // 로컬 환경에서는 기존 방식대로 파일 저장
-      const targetPath = path.join(targetDir, safeFilename);
-
-      // 대상 폴더가 없으면 생성
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-      }
-
-      // 파일 저장
-      fs.writeFileSync(targetPath, buffer);
-
-      res.status(200).json({ 
-        success: true, 
-        filename: safeFilename,
-        originalFilename: originalFilename,
-        path: targetPath,
-        isVercel: false
-      });
+    // 대상 폴더가 없으면 생성 (로컬 환경에서만)
+    if (!isVercel && !fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
+
+    // 로컬 환경에서만 파일 저장
+    if (!isVercel) {
+      fs.writeFileSync(targetPath, buffer);
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      filename: safeFilename,
+      originalFilename: originalFilename,
+      path: targetPath
+    });
 
   } catch (error) {
     console.error('PDF 업로드 오류:', error);

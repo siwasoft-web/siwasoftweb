@@ -60,6 +60,11 @@ function Setting() {
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [selectedProjectUsers, setSelectedProjectUsers] = useState([]);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [showSiteModal, setShowSiteModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectCode, setNewProjectCode] = useState('');
+  const [newProjectUsers, setNewProjectUsers] = useState('');
   const [siteProjects, setSiteProjects] = useState([
     { 
       id: 1, 
@@ -1795,57 +1800,14 @@ function Setting() {
                     </p>
                   </div>
                   
-                  {/* 새 사이트 추가 폼 */}
-                  {showAddForm && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-w-4xl">
-                      <h5 className="text-lg font-semibold text-gray-800 mb-4">새 사이트 추가</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">회사명</label>
-                          <input
-                            type="text"
-                            value={newSiteName}
-                            onChange={(e) => setNewSiteName(e.target.value)}
-                            placeholder="회사명을 입력하세요"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">회사코드</label>
-                          <input
-                            type="text"
-                            value={newSiteCode}
-                            onChange={(e) => setNewSiteCode(e.target.value.toUpperCase())}
-                            placeholder="회사코드를 입력하세요"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end gap-2">
-                        <button
-                          onClick={() => setShowAddForm(false)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                        >
-                          취소
-                        </button>
-                        <button
-                          onClick={handleAddSite}
-                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          추가
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
                   {/* 새 사이트 추가 버튼 */}
                   <div className="mt-2 flex justify-end max-w-4xl">
                     <button 
-                      onClick={() => setShowAddForm(!showAddForm)}
+                      onClick={() => setShowSiteModal(true)}
                       className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
                     >
                       <Plus size={18} className="mr-2" />
-                      {showAddForm ? '추가 취소' : '사이트 생성'}
+                      사이트 생성
                     </button>
                   </div>
                 </div>
@@ -1962,11 +1924,11 @@ function Setting() {
                     {/* 새 자동화 추가 버튼 */}
                     <div className="mt-2 flex justify-end max-w-4xl">
                       <button 
-                        onClick={() => setShowAddProjectForm(!showAddProjectForm)}
+                        onClick={() => setShowProjectModal(true)}
                         className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
                       >
                         <Plus size={18} className="mr-2" />
-                        {showAddProjectForm ? '추가 취소' : '자동화 생성'}
+                        자동화 생성
                       </button>
                     </div>
                   </div>
@@ -2022,6 +1984,169 @@ function Setting() {
             </div>
           </div>
         </>
+      )}
+
+      {/* 사이트 생성 모달 */}
+      {showSiteModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ 
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)'
+          }}
+          onClick={() => setShowSiteModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl p-6 w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-6">사이트 생성</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_CODE</label>
+                <input
+                  type="text"
+                  value={newSiteCode}
+                  onChange={(e) => setNewSiteCode(e.target.value.toUpperCase())}
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_ID</label>
+                <input
+                  type="text"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_NAME</label>
+                <input
+                  type="text"
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">USER_INFO (쉼표 구분)</label>
+                <input
+                  type="text"
+                  placeholder="예: user1, user2"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowSiteModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  handleAddSite();
+                  setShowSiteModal(false);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 프로젝트 생성 모달 */}
+      {showProjectModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ 
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)'
+          }}
+          onClick={() => setShowProjectModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl p-6 w-96"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-6">새 프로젝트 생성</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_CODE</label>
+                <input
+                  type="text"
+                  value={newProjectCode}
+                  onChange={(e) => setNewProjectCode(e.target.value)}
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_ID</label>
+                <input
+                  type="text"
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_NAME</label>
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder=""
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">USER_INFO (쉼표 구분)</label>
+                <input
+                  type="text"
+                  value={newProjectUsers}
+                  onChange={(e) => setNewProjectUsers(e.target.value)}
+                  placeholder="예: user1, user2"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex gap-2 justify-end">
+              <button
+                onClick={() => setShowProjectModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  // 프로젝트 추가 로직 (나중에 구현)
+                  setShowProjectModal(false);
+                  setNewProjectName('');
+                  setNewProjectCode('');
+                  setNewProjectUsers('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"
+              >
+                생성
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -55,6 +55,40 @@ function Setting() {
   const [newSiteName, setNewSiteName] = useState('');
   const [newSiteCode, setNewSiteCode] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedSiteId, setSelectedSiteId] = useState(null);
+  const [showAddProjectForm, setShowAddProjectForm] = useState(false);
+  const [siteProjects, setSiteProjects] = useState([
+    { 
+      id: 1, 
+      name: '물류_자동화', 
+      code: '1234001', 
+      users: [
+        { name: '홍길동', email: 'hong@siwasoft.com' },
+        { name: '김철수', email: 'kim@siwasoft.com' },
+        { name: '이영희', email: 'lee@siwasoft.com' }
+      ], 
+      lastUpdate: '2024-10-20' 
+    },
+    { 
+      id: 2, 
+      name: '인사_자동화', 
+      code: '1234003', 
+      users: [
+        { name: '이영희', email: 'lee@siwasoft.com' },
+        { name: '박민수', email: 'park@siwasoft.com' }
+      ], 
+      lastUpdate: '2024-10-21' 
+    },
+    { 
+      id: 3, 
+      name: '재고_자동화', 
+      code: '1234002', 
+      users: [
+        { name: '최지훈', email: 'choi@siwasoft.com' }
+      ], 
+      lastUpdate: '2024-10-22' 
+    }
+  ]);
 
   // 공통: 안전한 JSON 파서
   const safeParseJson = async (response) => {
@@ -1007,6 +1041,10 @@ function Setting() {
     }
   };
 
+  const handleViewSiteDetails = (siteId) => {
+    setSelectedSiteId(siteId);
+  };
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1631,9 +1669,23 @@ function Setting() {
 
             {activeTab === 'admin' && (
               <div>
-                <h3 className={styles.pageTitle}>사이트 목록</h3>
+                {/* 제목 - 조건부 렌더링 */}
+                {!selectedSiteId ? (
+                  <h3 className={styles.pageTitle}>사이트 목록</h3>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedSiteId(null)}
+                      className={`flex items-center gap-2 hover:text-blue-600 transition-colors group ${styles.pageTitle}`}
+                    >
+                      <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
+                      <span>프로젝트 목록</span>
+                    </button>
+                  </div>
+                )}
                 
-                {/* 사이트 목록 테이블 */}
+                {/* 사이트 목록 테이블 - selectedSiteId가 없을 때만 표시 */}
+                {!selectedSiteId && (
                 <div className="mb-10">
                   <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
                     <div className="overflow-x-auto">
@@ -1642,25 +1694,25 @@ function Setting() {
                           <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 shadow-sm">
                             <th className="px-6 py-5 text-left text-sm font-extrabold text-blue-900 uppercase tracking-widest">
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                
                                 회사명
                               </div>
                             </th>
                             <th className="px-6 py-5 text-left text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                                
                                 회사코드
                               </div>
                             </th>
                             <th className="px-6 py-5 text-center text-sm font-extrabold text-emerald-900 uppercase tracking-widest">
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                                
                                 확인
                               </div>
                             </th>
                             <th className="px-6 py-5 text-center text-sm font-extrabold text-purple-900 uppercase tracking-widest">
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                
                                 기능
                               </div>
                             </th>
@@ -1673,13 +1725,20 @@ function Setting() {
                                 <div className="text-sm font-medium text-gray-800">{site.name}</div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
+                                <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
                                   {site.code}
                                 </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
-                                <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-full text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md">
-                                  확인
+                                <button 
+                                  onClick={() => handleViewSiteDetails(site.id)}
+                                  className={`inline-flex items-center px-3 py-1.5 border text-xs font-medium rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200 shadow-sm hover:shadow-md ${
+                                    selectedSiteId === site.id 
+                                      ? 'border-blue-500 text-white bg-blue-500 hover:bg-blue-600 focus:ring-blue-300' 
+                                      : 'border-gray-300 text-gray-800 bg-gray-100 hover:bg-gray-200 focus:ring-gray-300'
+                                  }`}
+                                >
+                                  {selectedSiteId === site.id ? '선택됨' : '확인'}
                                 </button>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
@@ -1763,6 +1822,126 @@ function Setting() {
                     </button>
                   </div>
                 </div>
+                )}
+
+                {/* 선택된 사이트의 프로젝트 목록 - selectedSiteId가 있을 때만 표시 */}
+                {selectedSiteId && (
+                  <div>
+                    <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
+                      <div className="overflow-x-auto">
+                        <table className="w-full table-fixed">
+                          <colgroup>
+                            <col style={{width: '15%'}} />
+                            <col style={{width: '13%'}} />
+                            <col style={{width: '35%'}} />
+                            <col style={{width: '12%'}} />
+                            <col style={{width: '12%'}} />
+                            <col style={{width: '13%'}} />
+                          </colgroup>
+                          <thead>
+                            <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 shadow-sm">
+                              <th className="px-6 py-5 text-left text-sm font-extrabold text-blue-900 uppercase tracking-widest">
+                                <div className="flex items-center gap-2">
+                                  
+                                  프로젝트
+                                </div>
+                              </th>
+                              <th className="px-6 py-5 text-left text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
+                                <div className="flex items-center gap-2">
+                                  
+                                  코드
+                                </div>
+                              </th>
+                              <th className="px-6 py-5 text-left text-sm font-extrabold text-emerald-900 uppercase tracking-widest">
+                                <div className="flex items-center gap-2">
+                                  
+                                  사용자 목록
+                                </div>
+                              </th>
+                              <th className="px-4 py-5 text-left text-sm font-extrabold text-purple-900 uppercase tracking-widest">
+                                <div className="flex items-center gap-2">
+                                  
+                                  업데이트
+                                </div>
+                              </th>
+                              <th className="px-3 py-5 text-center text-sm font-extrabold text-blue-900 uppercase tracking-widest">
+                                <div className="flex items-center justify-center gap-2">
+                                  
+                                  목록
+                                </div>
+                              </th>
+                              <th className="px-3 py-5 text-center text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
+                                <div className="flex items-center justify-center gap-2">
+                                  
+                                  수정
+                                </div>
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-100">
+                            {siteProjects.map((project) => (
+                              <tr key={project.id} className="hover:bg-gray-50 transition-colors duration-200 group">
+                                <td className="px-4 py-3">
+                                  <div className="text-sm font-medium text-gray-800 truncate" title={project.name}>{project.name}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md" title={project.code}>
+                                    {project.code}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div 
+                                    className="text-xs text-gray-600 truncate"
+                                    title={project.users.map(u => u.email).join(', ')}
+                                  >
+                                    {project.users.map((user, idx) => (
+                                      <span key={idx}>
+                                        {user.email}
+                                        {idx < project.users.length - 1 && <span>, </span>}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap">
+                                  <span className="text-xs text-gray-600">{project.lastUpdate}</span>
+                                </td>
+                                <td className="px-2 py-3 whitespace-nowrap text-center">
+                                  <button className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                    확인
+                                  </button>
+                                </td>
+                                <td className="px-2 py-3 whitespace-nowrap text-center">
+                                  <button className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                    수정
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    {/* 프로젝트 개수 표시 */}
+                    <div className="mt-4 max-w-4xl">
+                      <p className="text-xs text-gray-400">
+                        총 {siteProjects.length}건 표시 중 (원본 {siteProjects.length}건)
+                      </p>
+                    </div>
+                    
+                    {/* 새 자동화 추가 버튼 */}
+                    <div className="mt-2 flex justify-end max-w-4xl">
+                      <button 
+                        onClick={() => setShowAddProjectForm(!showAddProjectForm)}
+                        className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
+                      >
+                        <Plus size={18} className="mr-2" />
+                        {showAddProjectForm ? '추가 취소' : '자동화 생성'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                   <hr className="my-6 border-0 h-px bg-gray-200" />
               </div>
             )}

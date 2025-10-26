@@ -49,6 +49,7 @@ export default async function handler(req, res) {
     // 원본 파일명 사용 (안전성을 위해 경로 조작 방지)
     const originalFilename = filename || `upload_${Date.now()}${fileExtension}`;
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
+    const isVercel = process.env.VERCEL === '1';
 
     // 모든 환경에서 동일하게 처리 (기존 방식)
     const targetPath = path.join(targetDir, safeFilename);

@@ -7,10 +7,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { filename, tool, target_dir, out_dir, recursive, base64Data, isVercel } = req.body;
+    const { filename, tool, target_dir, out_dir, recursive, base64Data } = req.body;
     
     // 디버깅을 위한 로깅
-    console.log('OCR MCP 요청:', { filename, tool, target_dir, out_dir, recursive, isVercel });
+    console.log('OCR MCP 요청:', { filename, tool, target_dir, out_dir, recursive });
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -20,6 +20,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Tool must be one of: "pdf", "img"' });
     }
 
+    // 환경 변수에서 API 베이스 URL 가져오기 (fallback으로 IP 사용)
+    const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
+    const isVercel = process.env.VERCEL === '1';
+    
     // 모든 환경에서 동일하게 처리 (기존 방식)
     let filePath, apiEndpoint, defaultTargetDir;
     
@@ -34,7 +38,6 @@ export default async function handler(req, res) {
     }
 
     // 파일 존재 확인 (로컬 환경에서만)
-    const isVercel = process.env.VERCEL === '1';
     if (!isVercel) {
       console.log('파일 경로 확인:', filePath);
       console.log('파일 존재 여부:', fs.existsSync(filePath));

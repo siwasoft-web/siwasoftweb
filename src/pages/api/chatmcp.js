@@ -19,9 +19,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Tool must be one of: "chatbot", "embed", "gitagent"' });
     }
 
-    // FastAPI 백엔드 엔드포인트 결정
+    // FastAPI 백엔드 엔드포인트 결정 (환경 변수 우선, fallback으로 IP 사용)
     const endpoint = tool === 'chatbot' ? '/chatbot' : tool === 'embed' ? '/embed' : '/gitagent';
-    const url = `http://221.139.227.131:8000${endpoint}`;
+    const baseUrl = process.env.API_BASE_URL || 'http://221.139.227.131:8000';
+    const url = `${baseUrl}${endpoint}`;
     console.log('Calling FastAPI endpoint:', url);
 
     // 요청 바디 구성

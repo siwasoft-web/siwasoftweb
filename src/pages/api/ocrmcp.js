@@ -23,14 +23,17 @@ export default async function handler(req, res) {
     // 파일 경로 설정 (툴에 따라 다름)
     let filePath, apiEndpoint, defaultTargetDir;
     
+    // 환경 변수에서 API 베이스 URL 가져오기 (fallback으로 IP 사용)
+    const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
+    
     if (tool === 'img') {
       defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
       filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://221.139.227.131:8001/img';
+      apiEndpoint = `${baseUrl}/img`;
     } else {
       defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
       filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = 'http://221.139.227.131:8001/pdf';
+      apiEndpoint = `${baseUrl}/pdf`;
     }
 
     // 파일 존재 확인

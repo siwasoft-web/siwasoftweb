@@ -57,6 +57,9 @@ function Setting() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [showAddProjectForm, setShowAddProjectForm] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [selectedProjectUsers, setSelectedProjectUsers] = useState([]);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [siteProjects, setSiteProjects] = useState([
     { 
       id: 1, 
@@ -1058,6 +1061,17 @@ function Setting() {
     setSelectedSiteId(siteId);
   };
 
+  const handleShowUsers = (users, event) => {
+    console.log('사용자 목록 클릭됨:', users);
+    const rect = event.currentTarget.getBoundingClientRect();
+    setModalPosition({
+      top: rect.top,
+      left: rect.right + 10  // 텍스트 우측으로 10px 떨어진 위치
+    });
+    setSelectedProjectUsers(users);
+    setShowUsersModal(true);
+  };
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1902,7 +1916,10 @@ function Setting() {
                                     {project.code}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3">
+                                <td 
+                                  className="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors"
+                                  onClick={(e) => handleShowUsers(project.users, e)}
+                                >
                                   <div 
                                     className="text-xs text-gray-600 truncate"
                                     title={project.users.map(u => u.email).join(', ')}
@@ -1960,6 +1977,52 @@ function Setting() {
             )}
         </div>
       </div>
+
+      {/* 사용자 목록 모달 */}
+      {showUsersModal && (
+        <>
+          <div 
+            className="fixed inset-0"
+            style={{ zIndex: 9998 }}
+            onClick={() => setShowUsersModal(false)}
+          />
+          <div 
+            className="fixed bg-white rounded-lg shadow-2xl p-6 w-80 max-h-96 overflow-y-auto"
+            style={{ 
+              zIndex: 9999,
+              top: `${modalPosition.top}px`,
+              left: `${modalPosition.left}px`
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-4 pb-3 border-b border-gray-200">
+              사용자 목록
+            </h3>
+            <div className="space-y-2">
+              {selectedProjectUsers.length > 0 ? (
+                selectedProjectUsers.map((user, idx) => (
+                  <div 
+                    key={idx}
+                    className="text-sm text-gray-700 py-2 px-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+                  >
+                    {user.email}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">사용자가 없습니다.</p>
+              )}
+            </div>
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowUsersModal(false)}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors font-medium"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -51,25 +51,37 @@ export default async function handler(req, res) {
     const safeFilename = path.basename(originalFilename).replace(/[^a-zA-Z0-9._\u3131-\u3163\uac00-\ud7a3-]/g, '_');
     const isVercel = process.env.VERCEL === '1';
 
-    // 모든 환경에서 동일하게 처리 (기존 방식)
-    const targetPath = path.join(targetDir, safeFilename);
+    if (isVercel) {
+      // Vercel 환경: Base64 데이터를 직접 반환
+      console.log('Vercel 환경: Base64 데이터 직접 반환');
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: null,
+        isVercel: true,
+        base64Data: base64Data
+      });
+    } else {
+      // 로컬 환경: 기존 방식대로 파일 저장
+      const targetPath = path.join(targetDir, safeFilename);
 
-    // 대상 폴더가 없으면 생성 (로컬 환경에서만)
-    if (!isVercel && !fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
+      // 대상 폴더가 없으면 생성
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
 
-    // 로컬 환경에서만 파일 저장
-    if (!isVercel) {
+      // 파일 저장
       fs.writeFileSync(targetPath, buffer);
-    }
 
-    res.status(200).json({ 
-      success: true, 
-      filename: safeFilename,
-      originalFilename: originalFilename,
-      path: targetPath
-    });
+      res.status(200).json({ 
+        success: true, 
+        filename: safeFilename,
+        originalFilename: originalFilename,
+        path: targetPath,
+        isVercel: false
+      });
+    }
 
   } catch (error) {
     console.error('PDF 업로드 오류:', error);

@@ -24,21 +24,33 @@ export default async function handler(req, res) {
     const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
     const isVercel = process.env.VERCEL === '1';
     
-    // 모든 환경에서 동일하게 처리 (기존 방식)
-    let filePath, apiEndpoint, defaultTargetDir;
+    // Vercel 환경과 로컬 환경을 다르게 처리
+    let apiEndpoint, requestBody;
     
-    if (tool === 'img') {
-      defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
-      filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = `${baseUrl}/img`;
+    if (isVercel && base64Data) {
+      // Vercel 환경: Base64 데이터를 직접 우리 서버로 전송
+      console.log('Vercel 환경: Base64 데이터 직접 전송');
+      apiEndpoint = `${baseUrl}/${tool}`;
+      requestBody = {
+        base64_data: base64Data,
+        filename: filename,
+        out_dir: '/home/siwasoft/siwasoft/mcp/out'
+      };
     } else {
-      defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
-      filePath = path.join(target_dir || defaultTargetDir, filename);
-      apiEndpoint = `${baseUrl}/pdf`;
-    }
+      // 로컬 환경: 기존 방식 (파일 경로 기반)
+      let filePath, defaultTargetDir;
+      
+      if (tool === 'img') {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
+        filePath = path.join(target_dir || defaultTargetDir, filename);
+        apiEndpoint = `${baseUrl}/img`;
+      } else {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
+        filePath = path.join(target_dir || defaultTargetDir, filename);
+        apiEndpoint = `${baseUrl}/pdf`;
+      }
 
-    // 파일 존재 확인 (로컬 환경에서만)
-    if (!isVercel) {
+      // 파일 존재 확인
       console.log('파일 경로 확인:', filePath);
       console.log('파일 존재 여부:', fs.existsSync(filePath));
       
@@ -46,13 +58,13 @@ export default async function handler(req, res) {
         console.log('파일을 찾을 수 없음:', filePath);
         return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${filePath}` });
       }
-    }
 
-    const requestBody = {
-      target_dir: target_dir || defaultTargetDir,
-      out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-      recursive: recursive || false
-    };
+      requestBody = {
+        target_dir: target_dir || defaultTargetDir,
+        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+        recursive: recursive || false
+      };
+    }
 
     // FastAPI 서버에 요청 보내기
     console.log('API 엔드포인트:', apiEndpoint);

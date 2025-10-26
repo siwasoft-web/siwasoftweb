@@ -25,14 +25,32 @@ export default async function handler(req, res) {
     
     let apiEndpoint, requestBody;
 
-    if (isVercel && base64Data) {
-      // Vercel 환경: Base64 데이터를 직접 전송
-      console.log('Vercel 환경: Base64 데이터 직접 전송');
+    if (isVercel && base64Data && !req.body.serverSaved) {
+      // Vercel 환경: Base64 데이터를 직접 전송 (서버 저장 실패 시 fallback)
+      console.log('Vercel 환경: Base64 데이터 직접 전송 (fallback)');
       apiEndpoint = `${baseUrl}/${tool}`;
       requestBody = {
         base64_data: base64Data,
         filename: filename,
         out_dir: out_dir || '/tmp/ocr_output'
+      };
+    } else if (isVercel && req.body.serverSaved) {
+      // Vercel 환경: 서버에 저장된 파일 사용
+      console.log('Vercel 환경: 서버에 저장된 파일 사용');
+      let defaultTargetDir;
+      
+      if (tool === 'img') {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
+        apiEndpoint = `${baseUrl}/img`;
+      } else {
+        defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
+        apiEndpoint = `${baseUrl}/pdf`;
+      }
+
+      requestBody = {
+        target_dir: defaultTargetDir,
+        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+        recursive: recursive || false
       };
     } else {
       // 로컬 환경: 기존 방식 (파일 경로 기반)

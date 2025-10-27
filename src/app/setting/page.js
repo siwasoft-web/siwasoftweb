@@ -67,6 +67,7 @@ function Setting() {
   const [newProjectUsers, setNewProjectUsers] = useState('');
   const [siteSearchTerm, setSiteSearchTerm] = useState('');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [taskSearchTerm, setTaskSearchTerm] = useState('');
   // 인라인 편집 상태
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editingProjectId, setEditingProjectId] = useState(null);
@@ -2155,6 +2156,13 @@ function Setting() {
                   const project = siteProjects.find(p => p.id === selectedProjectId);
                   if (!project) return null;
                   
+                  // 자동화 작업 필터링
+                  const filteredTasks = (project.tasks || []).filter(task =>
+                    task.name.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                    task.status.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                    task.updateTime.toLowerCase().includes(taskSearchTerm.toLowerCase())
+                  );
+                  
                   return (
                     <div>
                       <div className="flex items-center justify-between mb-2 max-w-4xl">
@@ -2165,6 +2173,21 @@ function Setting() {
                           <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
                           <span>{project.name}</span>
                         </button>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={taskSearchTerm}
+                            onChange={(e) => setTaskSearchTerm(e.target.value)}
+                            placeholder="자동화명, 상태 검색..."
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <button
+                            onClick={() => setTaskSearchTerm('')}
+                            className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+                          >
+                            초기화
+                          </button>
+                        </div>
                       </div>
 
                       <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
@@ -2195,7 +2218,7 @@ function Setting() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
-                              {project.tasks && project.tasks.map((task) => (
+                              {filteredTasks.map((task) => (
                                 <tr key={task.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                                   <td className="px-4 py-3 whitespace-nowrap">
                                     <div className="text-sm font-medium text-gray-800">{task.name}</div>

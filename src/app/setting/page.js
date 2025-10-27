@@ -1072,8 +1072,7 @@ function Setting() {
   const handleEditSite = (site) => {
     setEditingSiteId(site.id);
     setEditValues({
-      name: site.name,
-      code: site.code
+      name: site.name
     });
   };
 
@@ -1081,7 +1080,7 @@ function Setting() {
   const handleSaveSiteEdit = () => {
     setSites(sites.map(site => 
       site.id === editingSiteId 
-        ? { ...site, name: editValues.name, code: editValues.code }
+        ? { ...site, name: editValues.name }
         : site
     ));
     setEditingSiteId(null);
@@ -1877,18 +1876,9 @@ function Setting() {
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                {editingSiteId === site.id ? (
-                                  <input
-                                    type="text"
-                                    value={editValues.code}
-                                    onChange={(e) => setEditValues({...editValues, code: e.target.value.toUpperCase()})}
-                                    className="w-full px-2 py-1 text-sm font-mono border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                ) : (
-                                  <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
-                                    {site.code}
-                                  </span>
-                                )}
+                                <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
+                                  {site.code}
+                                </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <button 

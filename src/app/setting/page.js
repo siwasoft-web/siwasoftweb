@@ -67,6 +67,10 @@ function Setting() {
   const [newProjectUsers, setNewProjectUsers] = useState('');
   const [siteSearchTerm, setSiteSearchTerm] = useState('');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  // 인라인 편집 상태
+  const [editingSiteId, setEditingSiteId] = useState(null);
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [editValues, setEditValues] = useState({});
   const [siteProjects, setSiteProjects] = useState([
     { 
       id: 1, 
@@ -1064,6 +1068,67 @@ function Setting() {
     }
   };
 
+  // 사이트 편집 시작
+  const handleEditSite = (site) => {
+    setEditingSiteId(site.id);
+    setEditValues({
+      name: site.name,
+      code: site.code
+    });
+  };
+
+  // 사이트 편집 저장
+  const handleSaveSiteEdit = () => {
+    setSites(sites.map(site => 
+      site.id === editingSiteId 
+        ? { ...site, name: editValues.name, code: editValues.code }
+        : site
+    ));
+    setEditingSiteId(null);
+    setEditValues({});
+  };
+
+  // 사이트 편집 취소
+  const handleCancelSiteEdit = () => {
+    setEditingSiteId(null);
+    setEditValues({});
+  };
+
+  // 프로젝트 편집 시작
+  const handleEditProject = (project) => {
+    setEditingProjectId(project.id);
+    setEditValues({
+      name: project.name,
+      code: project.code,
+      users: project.users.map(u => u.email).join(', ')
+    });
+  };
+
+  // 프로젝트 편집 저장
+  const handleSaveProjectEdit = () => {
+    setSiteProjects(siteProjects.map(project => 
+      project.id === editingProjectId 
+        ? { 
+            ...project, 
+            name: editValues.name, 
+            code: editValues.code,
+            users: editValues.users.split(',').map(email => ({ 
+              name: email.trim().split('@')[0], 
+              email: email.trim() 
+            }))
+          }
+        : project
+    ));
+    setEditingProjectId(null);
+    setEditValues({});
+  };
+
+  // 프로젝트 편집 취소
+  const handleCancelProjectEdit = () => {
+    setEditingProjectId(null);
+    setEditValues({});
+  };
+
   const handleViewSiteDetails = (siteId) => {
     setSelectedSiteId(siteId);
   };
@@ -1800,12 +1865,30 @@ function Setting() {
                           {filteredSites.map((site) => (
                             <tr key={site.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-800">{site.name}</div>
+                                {editingSiteId === site.id ? (
+                                  <input
+                                    type="text"
+                                    value={editValues.name}
+                                    onChange={(e) => setEditValues({...editValues, name: e.target.value})}
+                                    className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                ) : (
+                                  <div className="text-sm font-medium text-gray-800">{site.name}</div>
+                                )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
-                                  {site.code}
-                                </span>
+                                {editingSiteId === site.id ? (
+                                  <input
+                                    type="text"
+                                    value={editValues.code}
+                                    onChange={(e) => setEditValues({...editValues, code: e.target.value.toUpperCase()})}
+                                    className="w-full px-2 py-1 text-sm font-mono border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                ) : (
+                                  <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md">
+                                    {site.code}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <button 
@@ -1821,15 +1904,37 @@ function Setting() {
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <div className="flex items-center justify-center gap-2">
-                                  <button className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md">
-                                    수정
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteSite(site.id)}
-                                    className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
-                                  >
-                                    삭제
-                                  </button>
+                                  {editingSiteId === site.id ? (
+                                    <>
+                                      <button 
+                                        onClick={handleSaveSiteEdit}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        확인
+                                      </button>
+                                      <button 
+                                        onClick={handleCancelSiteEdit}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        취소
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button 
+                                        onClick={() => handleEditSite(site)}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        수정
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteSite(site.id)}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        삭제
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1917,28 +2022,56 @@ function Setting() {
                             {filteredProjects.map((project) => (
                               <tr key={project.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                                 <td className="px-4 py-3">
-                                  <div className="text-sm font-medium text-gray-800 truncate" title={project.name}>{project.name}</div>
+                                  {editingProjectId === project.id ? (
+                                    <input
+                                      type="text"
+                                      value={editValues.name}
+                                      onChange={(e) => setEditValues({...editValues, name: e.target.value})}
+                                      className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  ) : (
+                                    <div className="text-sm font-medium text-gray-800 truncate" title={project.name}>{project.name}</div>
+                                  )}
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md" title={project.code}>
-                                    {project.code}
-                                  </span>
+                                  {editingProjectId === project.id ? (
+                                    <input
+                                      type="text"
+                                      value={editValues.code}
+                                      onChange={(e) => setEditValues({...editValues, code: e.target.value})}
+                                      className="w-full px-2 py-1 text-sm font-mono border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  ) : (
+                                    <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md" title={project.code}>
+                                      {project.code}
+                                    </span>
+                                  )}
                                 </td>
                                 <td 
-                                  className="px-4 py-3 cursor-pointer hover:bg-blue-50 transition-colors"
-                                  onClick={(e) => handleShowUsers(project.users, e)}
+                                  className={`px-4 py-3 ${editingProjectId !== project.id ? 'cursor-pointer hover:bg-blue-50' : ''} transition-colors`}
+                                  onClick={(e) => editingProjectId !== project.id && handleShowUsers(project.users, e)}
                                 >
-                                  <div 
-                                    className="text-xs text-gray-600 truncate"
-                                    title={project.users.map(u => u.email).join(', ')}
-                                  >
-                                    {project.users.map((user, idx) => (
-                                      <span key={idx}>
-                                        {user.email}
-                                        {idx < project.users.length - 1 && <span>, </span>}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  {editingProjectId === project.id ? (
+                                    <input
+                                      type="text"
+                                      value={editValues.users}
+                                      onChange={(e) => setEditValues({...editValues, users: e.target.value})}
+                                      placeholder="email1@example.com, email2@example.com"
+                                      className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  ) : (
+                                    <div 
+                                      className="text-xs text-gray-600 truncate"
+                                      title={project.users.map(u => u.email).join(', ')}
+                                    >
+                                      {project.users.map((user, idx) => (
+                                        <span key={idx}>
+                                          {user.email}
+                                          {idx < project.users.length - 1 && <span>, </span>}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="px-3 py-3 whitespace-nowrap">
                                   <span className="text-xs text-gray-600">{project.lastUpdate}</span>
@@ -1949,9 +2082,29 @@ function Setting() {
                                   </button>
                                 </td>
                                 <td className="px-2 py-3 whitespace-nowrap text-center">
-                                  <button className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md">
-                                    수정
-                                  </button>
+                                  {editingProjectId === project.id ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button 
+                                        onClick={handleSaveProjectEdit}
+                                        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        확인
+                                      </button>
+                                      <button 
+                                        onClick={handleCancelProjectEdit}
+                                        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        취소
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleEditProject(project)}
+                                      className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                    >
+                                      수정
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             ))}

@@ -71,6 +71,7 @@ function Setting() {
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editValues, setEditValues] = useState({});
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [siteProjects, setSiteProjects] = useState([
     { 
       id: 1, 
@@ -81,7 +82,12 @@ function Setting() {
         { name: '김철수', email: 'kim@siwasoft.com' },
         { name: '이영희', email: 'lee@siwasoft.com' }
       ], 
-      lastUpdate: '2024-10-20' 
+      lastUpdate: '2024-10-20',
+      tasks: [
+        { id: 1, name: '물류목록_확인', status: '실행중', updateTime: '2025-10-11 15:35:11', usage: '미사용' },
+        { id: 2, name: '발주확인', status: '오류', updateTime: '2025-10-11 15:35', usage: '미사용' },
+        { id: 3, name: '웹사이트_업데이트', status: '대기중', updateTime: '2025-10-11 15:35', usage: '미사용' }
+      ]
     },
     { 
       id: 2, 
@@ -91,7 +97,11 @@ function Setting() {
         { name: '이영희', email: 'lee@siwasoft.com' },
         { name: '박민수', email: 'park@siwasoft.com' }
       ], 
-      lastUpdate: '2024-10-21' 
+      lastUpdate: '2024-10-21',
+      tasks: [
+        { id: 1, name: '급여계산', status: '완료', updateTime: '2025-10-11 14:20:30', usage: '사용중' },
+        { id: 2, name: '연차관리', status: '실행중', updateTime: '2025-10-11 14:25', usage: '사용중' }
+      ]
     },
     { 
       id: 3, 
@@ -100,7 +110,10 @@ function Setting() {
       users: [
         { name: '최지훈', email: 'choi@siwasoft.com' }
       ], 
-      lastUpdate: '2024-10-22' 
+      lastUpdate: '2024-10-22',
+      tasks: [
+        { id: 1, name: '재고확인', status: '대기중', updateTime: '2025-10-11 16:00', usage: '미사용' }
+      ]
     }
   ]);
 
@@ -1132,6 +1145,17 @@ function Setting() {
     setSelectedSiteId(siteId);
   };
 
+  const handleViewProjectDetails = (projectId) => {
+    setSelectedProjectId(projectId);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    if (confirm('정말 삭제하시겠습니까?')) {
+      // 삭제 로직 구현
+      console.log('Task deleted:', taskId);
+    }
+  };
+
   const handleShowUsers = (users, event) => {
     console.log('사용자 목록 클릭됨:', users);
     const rect = event.currentTarget.getBoundingClientRect();
@@ -1799,7 +1823,7 @@ function Setting() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : !selectedProjectId ? (
                   <div className="flex items-center justify-between mb-2 max-w-4xl">
                     <button
                       onClick={() => setSelectedSiteId(null)}
@@ -1824,7 +1848,7 @@ function Setting() {
                       </button>
                     </div>
                   </div>
-                )}
+                ) : null}
                 
                 {/* 사이트 목록 테이블 - selectedSiteId가 없을 때만 표시 */}
                 {!selectedSiteId && (
@@ -1954,8 +1978,8 @@ function Setting() {
                 </div>
                 )}
 
-                {/* 선택된 사이트의 프로젝트 목록 - selectedSiteId가 있을 때만 표시 */}
-                {selectedSiteId && (
+                {/* 선택된 사이트의 프로젝트 목록 - selectedSiteId가 있고 selectedProjectId가 없을 때만 표시 */}
+                {selectedSiteId && !selectedProjectId && (
                   <div>
                     <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
                       <div className="overflow-x-auto">
@@ -2067,7 +2091,10 @@ function Setting() {
                                   <span className="text-xs text-gray-600">{project.lastUpdate}</span>
                                 </td>
                                 <td className="px-2 py-3 whitespace-nowrap text-center">
-                                  <button className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md">
+                                  <button 
+                                    onClick={() => handleViewProjectDetails(project.id)}
+                                    className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                  >
                                     확인
                                   </button>
                                 </td>
@@ -2122,6 +2149,101 @@ function Setting() {
                     </div>
                   </div>
                 )}
+
+                {/* 프로젝트 상세 - 자동화 작업 목록 */}
+                {selectedProjectId && (() => {
+                  const project = siteProjects.find(p => p.id === selectedProjectId);
+                  if (!project) return null;
+                  
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between mb-2 max-w-4xl">
+                        <button
+                          onClick={() => setSelectedProjectId(null)}
+                          className={`flex items-center gap-2 hover:text-blue-600 transition-colors group ${styles.pageTitle}`}
+                        >
+                          <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
+                          <span>{project.name}</span>
+                        </button>
+                      </div>
+
+                      <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 shadow-sm">
+                                <th className="px-6 py-5 text-left text-sm font-extrabold text-blue-900 uppercase tracking-widest">
+                                  <div className="flex items-center gap-2">
+                                    자동화
+                                  </div>
+                                </th>
+                                <th className="px-6 py-5 text-left text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
+                                  <div className="flex items-center gap-2">
+                                    스테이터스
+                                  </div>
+                                </th>
+                                <th className="px-6 py-5 text-left text-sm font-extrabold text-emerald-900 uppercase tracking-widest">
+                                  <div className="flex items-center gap-2">
+                                    업데이트
+                                  </div>
+                                </th>
+                                <th className="px-6 py-5 text-center text-sm font-extrabold text-purple-900 uppercase tracking-widest">
+                                  <div className="flex items-center justify-center gap-2">
+                                    기능
+                                  </div>
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-100">
+                              {project.tasks && project.tasks.map((task) => (
+                                <tr key={task.id} className="hover:bg-gray-50 transition-colors duration-200 group">
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-800">{task.name}</div>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className={`inline-block text-sm px-2 py-1 rounded-md ${
+                                      task.status === '오류' ? 'text-red-600 bg-red-50' :
+                                      task.status === '완료' ? 'text-green-600 bg-green-50' :
+                                      task.status === '실행중' ? 'text-blue-600 bg-blue-50' :
+                                      'text-gray-600 bg-gray-100'
+                                    }`}>
+                                      {task.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    <span className="text-sm text-gray-600">{task.updateTime}</span>
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <span className={`text-xs px-2 py-1 rounded ${
+                                        task.usage === '사용중' ? 'text-green-700 bg-green-50' : 'text-gray-600 bg-gray-100'
+                                      }`}>
+                                        {task.usage}
+                                      </span>
+                                      <button 
+                                        onClick={() => handleDeleteTask(task.id)}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      
+                      {/* 자동화 작업 개수 표시 */}
+                      <div className="mt-4 max-w-4xl">
+                        <p className="text-xs text-gray-400">
+                          총 {project.tasks?.length || 0}건 표시 중 (원본 {project.tasks?.length || 0}건)
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                   <hr className="my-6 border-0 h-px bg-gray-200" />
               </div>

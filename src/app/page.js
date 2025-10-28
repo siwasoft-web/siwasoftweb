@@ -1,12 +1,58 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
-import { Layers, MessageSquare, ScanText, User, HelpCircle } from 'lucide-react';
+import { Layers, MessageSquare, ScanText, User, HelpCircle, Clock, ChevronRight } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import withAuth from '@/components/withAuth';
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 function Home() {
+  const { data: session } = useSession();
+  const [chatSessions, setChatSessions] = useState([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+
+  // 대화방 목록 가져오기
+  useEffect(() => {
+    const fetchChatSessions = async () => {
+      if (!session) return;
+      
+      try {
+        setIsLoadingSessions(true);
+        const response = await fetch('/api/chat-sessions');
+        const data = await response.json();
+        
+        if (data.success) {
+          setChatSessions(data.sessions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching chat sessions:', error);
+      } finally {
+        setIsLoadingSessions(false);
+      }
+    };
+
+    fetchChatSessions();
+  }, [session]);
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '오늘';
+    if (diffDays === 2) return '어제';
+    if (diffDays <= 7) return `${diffDays}일 전`;
+    
+    return date.toLocaleDateString('ko-KR', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   return (
     <div className="p-8">
       <PageHeader title="HOME" />
@@ -63,7 +109,63 @@ function Home() {
                   <p className="text-gray-600 mt-1">자연어 처리 기반의 AI와 대화하고 업무 관련 도움을 받으세요.</p>
                 </div>
               </div>
-              <a href="#" className="text-blue-600 font-medium mt-4 inline-block">대화방 시작하기 →</a>
+              
+              {/* 대화방 목록 섹션 */}
+              <div className="mt-6">
+                {isLoadingSessions ? (
+                  <div className="text-gray-500 text-sm">대화방 목록을 불러오는 중...</div>
+                ) : chatSessions.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">최근 대화방</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {chatSessions.slice(0, 5).map((session) => (
+                        <Link 
+                          key={session._id} 
+                          href={`/aillm?session=${session._id}`}
+                          className="block p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {session.title}
+                              </p>
+                              {session.lastMessage && (
+                                <p className="text-xs text-gray-500 truncate mt-1">
+                                  {session.lastMessage}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 ml-2">
+                              <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <Clock className="w-3 h-3" />
+                                {formatDate(session.updatedAt)}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="flex justify-center mt-4">
+                      <Link 
+                        href="/aillm" 
+                        className="text-blue-600 font-medium text-sm hover:text-blue-700"
+                      >
+                        새 대화방 시작하기 →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-center mt-4">
+                    <Link 
+                      href="/aillm" 
+                      className="text-blue-600 font-medium hover:text-blue-700"
+                    >
+                      대화방 시작하기 →
+                    </Link>
+                  </div>
+                )}
+              </div>
             </Card>
             <Card>
               <div className="flex items-center gap-4">

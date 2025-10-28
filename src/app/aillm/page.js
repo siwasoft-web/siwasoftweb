@@ -5,9 +5,11 @@ import PageHeader from '@/components/PageHeader';
 import { Search, Plus, Paperclip, SendHorizontal, FileUp, Bot, User, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 function AiLlmPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +55,14 @@ function AiLlmPage() {
       }
     };
   }, []);
+
+  // URL 파라미터에서 세션 ID 처리
+  useEffect(() => {
+    const sessionId = searchParams.get('session');
+    if (sessionId && sessionId !== currentSessionId) {
+      selectSession(sessionId);
+    }
+  }, [searchParams, currentSessionId]);
 
   // 동적 메시지 업데이트 함수
   const updateThinkingMessage = () => {

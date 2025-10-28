@@ -62,22 +62,36 @@ export default function ProjectDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [siteName, setSiteName] = useState('');
 
-  // ✅ RPA 로그 불러오기
+  // 프로젝트 이름 가져오기
+  const fetchProjectName = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/project/list`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.email || '',
+        },
+      });
+      const data = await res.json();
+      const match = data.data.find((p) => String(p.PROJECT_CODE) === String(projectId));
+      if (match) setProjectName(match.PROJECT_TITLE || `프로젝트 ${projectId}`);
+    } catch (err) {
+      console.error('프로젝트명 불러오기 실패:', err);
+    }
+  };
+
+  // RPA 로그 불러오기
   const fetchRpaLogs = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/v1/rpa/rpa_log/list/${projectId}`);
       const data = await res.json();
-
-      // ✅ API 응답 구조를 통일시켜 안전하게 처리
       const logs = Array.isArray(data) ? data : data.data || [];
 
-      setRpaLogs(logs); // 여기서 logs 변수를 실제로 사용
+      // is_use가 true인 로그만 표시
+      const activeLogs = logs.filter((l) => l.is_use !== false);
 
-      // ✅ 첫 번째 로그 자동 선택
-      if (logs.length > 0) {
-        setSelectedLog(logs[0]);
-        const logLines = logs[0].LOG?.split('\n').filter((l) => l.trim()) || [];
-        setNotifications(logLines);
+      setRpaLogs(activeLogs);
+      if (activeLogs.length > 0) {
+        setSelectedLog(activeLogs[0]);
       }
     } catch (err) {
       console.error('RPA 로그 불러오기 실패:', err);
@@ -86,34 +100,17 @@ export default function ProjectDashboardPage() {
     }
   };
 
-  const fetchSiteName = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/list`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': session?.user?.email || ''
-        },
-      });
-      const data = await res.json();
-      const match = data.data.find((s) => s.SITE_CODE == projectId);
-      if (match) setSiteName(match.site_name);
-    } catch (err) {
-      console.error('사이트명 불러오기 실패:', err);
-    }
-  };
-
   useEffect(() => {
-    fetchSiteName();
-    fetchRpaLogs();
+    if (projectId) {
+      fetchProjectName();
+      fetchRpaLogs();
+    }
   }, [projectId]);
 
-  // ✅ 로그 클릭 시 알림 갱신
   const handleLogClick = (log) => {
     setSelectedLog(log);
-    const logs = log.LOG?.split('\n').filter((l) => l.trim()) || [];
-    setNotifications(logs);
   };
-
+  
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen text-gray-500">

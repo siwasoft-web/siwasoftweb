@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://192.168.0.222:8010';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://221.139.227.131:8010';
 
 function RpaPage() {
   const { data: session } = useSession();
@@ -214,7 +214,7 @@ function RpaPage() {
             >
               {/* 삭제 */}
               <button
-                onClick={() => handleDeleteProject(project.SITE_CODE)}
+                // onClick={() => handleDeleteProject(project.SITE_CODE)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-red-600 z-10"
               >
                 <X size={16} />
@@ -235,7 +235,7 @@ function RpaPage() {
                 </div>
               </Link>
 
-              <div className="mt-4 flex items-center gap-2 text-gray-400">
+              {/* <div className="mt-4 flex items-center gap-2 text-gray-400">
                 <Layers
                   className="cursor-pointer hover:text-blue-500"
                   onClick={() => openUserModal(project)}
@@ -243,7 +243,7 @@ function RpaPage() {
                 <span className="text-sm text-gray-600">
                   {project.USER_INFO?.length || 0}
                 </span>
-              </div>
+              </div> */}
             </Card>
           ))}
         </div>

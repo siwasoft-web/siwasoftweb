@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Circle, ArrowLeft } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://192.168.0.222:8010';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://221.139.227.131:8010';
 
 // 상태 스타일 정의
 const statusStylesByName = {

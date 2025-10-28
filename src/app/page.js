@@ -12,6 +12,8 @@ function Home() {
   const { data: session } = useSession();
   const [chatSessions, setChatSessions] = useState([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [ocrHistory, setOcrHistory] = useState([]);
+  const [isLoadingOcrHistory, setIsLoadingOcrHistory] = useState(true);
 
   // 대화방 목록 가져오기
   useEffect(() => {
@@ -34,6 +36,29 @@ function Home() {
     };
 
     fetchChatSessions();
+  }, [session]);
+
+  // OCR 작업 이력 가져오기
+  useEffect(() => {
+    const fetchOcrHistory = async () => {
+      if (!session) return;
+      
+      try {
+        setIsLoadingOcrHistory(true);
+        const response = await fetch('/api/ocr-history?limit=5');
+        const data = await response.json();
+        
+        if (data.success) {
+          setOcrHistory(data.history || []);
+        }
+      } catch (error) {
+        console.error('Error fetching OCR history:', error);
+      } finally {
+        setIsLoadingOcrHistory(false);
+      }
+    };
+
+    fetchOcrHistory();
   }, [session]);
 
   // 날짜 포맷팅 함수
@@ -177,7 +202,73 @@ function Home() {
                   <p className="text-gray-600 mt-1">문서 이미지를 업로드하고 텍스트를 자동으로 추출하세요.</p>
                 </div>
               </div>
-              <a href="#" className="text-blue-600 font-medium mt-4 inline-block">문서 목록 보기 →</a>
+              
+              {/* OCR 작업 이력 섹션 */}
+              <div className="mt-6">
+                {isLoadingOcrHistory ? (
+                  <div className="text-gray-500 text-sm">작업 이력을 불러오는 중...</div>
+                ) : ocrHistory.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">최근 OCR 작업</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {ocrHistory.slice(0, 5).map((work) => (
+                        <Link 
+                          key={work._id} 
+                          href={`/aiocr?work=${work._id}`}
+                          className="block p-3 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  work.tool === 'pdf' 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {work.tool === 'pdf' ? 'PDF' : 'IMG'}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {formatDate(work.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {work.originalFilename}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate mt-1">
+                                {work.extractedText.substring(0, 50)}...
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 ml-2">
+                              <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <Clock className="w-3 h-3" />
+                                {formatDate(work.createdAt)}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-green-500 transition-colors" />
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="flex justify-center mt-4">
+                      <Link 
+                        href="/aiocr" 
+                        className="text-green-600 font-medium text-sm hover:text-green-700"
+                      >
+                        새 OCR 작업하기 →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-center mt-4">
+                    <Link 
+                      href="/aiocr" 
+                      className="text-green-600 font-medium hover:text-green-700"
+                    >
+                      OCR 작업하기 →
+                    </Link>
+                  </div>
+                )}
+              </div>
             </Card>
           </div>
         </section>

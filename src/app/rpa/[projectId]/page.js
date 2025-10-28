@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle, AlertCircle, Circle, ArrowLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle, Circle, ArrowLeft, Layers } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
@@ -58,9 +58,8 @@ export default function ProjectDashboardPage() {
   const router = useRouter();
   const [rpaLogs, setRpaLogs] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
-  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [siteName, setSiteName] = useState('');
+  const [projectName, setProjectName] = useState('');
 
   // 프로젝트 이름 가져오기
   const fetchProjectName = async () => {
@@ -110,7 +109,7 @@ export default function ProjectDashboardPage() {
   const handleLogClick = (log) => {
     setSelectedLog(log);
   };
-  
+
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen text-gray-500">
@@ -131,75 +130,78 @@ export default function ProjectDashboardPage() {
             <ArrowLeft />
           </button>
           <h2 className="text-2xl font-bold text-gray-800">
-            {siteName ? `${siteName}` : `사이트 코드 ${projectId}`}
+            {projectName || `프로젝트 코드 ${projectId}`}
           </h2>
         </div>
       </div>
 
-      {/* RPA 자동화 목록 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
-        {rpaLogs.map((log, index) => {
-          // ✅ 우선순위: API의 status_name → 없으면 숫자 매핑 → 기본 '대기중'
-          const statusName = log.status_name || codeToName[log.STATUS_CODE] || '대기중';
-          const ts = log.updated_at || log.created_at; // 둘 중 있는 쪽 사용
+      {/* RPA 로그 카드 목록 */}
+      {rpaLogs.length === 0 ? (
+        <div className="flex flex-col justify-center items-center min-h-[40vh] text-gray-400">
+          <Layers size={48} className="mb-3 opacity-40" />
+          <p className="text-lg font-medium">표시할 로그가 없습니다.</p>
+          <p className="text-sm text-gray-400 mt-1">자동화 실행 후 로그가 생성됩니다.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+          {rpaLogs.map((log, index) => {
+            const statusName = log.status_name || codeToName[log.STATUS_CODE] || '대기중';
+            const ts = log.updated_at || log.created_at;
 
-          return (
-            <div
-              key={index}
-              onClick={() => handleLogClick(log)}
-              className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col cursor-pointer hover:shadow-md transition-all ${
-                selectedLog?.TITLE === log.TITLE ? 'ring-2 ring-blue-400' : ''
-              }`}
-            >
-              <div className="p-5 flex-grow">
-                <h3 className="text-lg font-bold text-blue-600">{log.TITLE}</h3>
-
-                <div className="my-3">
-                  <StatusBadge name={statusName} />
+            return (
+              <div
+                key={index}
+                onClick={() => handleLogClick(log)}
+                className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col cursor-pointer hover:shadow-md transition-all ${
+                  selectedLog?.TITLE === log.TITLE ? 'ring-2 ring-blue-400' : ''
+                }`}
+              >
+                <div className="p-5 flex-grow">
+                  <h3 className="text-lg font-bold text-blue-600 truncate">{log.TITLE}</h3>
+                  <div className="my-3">
+                    <StatusBadge name={statusName} />
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-semibold">업데이트:</span>{' '}
+                    {ts ? new Date(ts).toLocaleString('ko-KR') : '---'}
+                  </p>
                 </div>
 
-                {/* <p className="text-sm text-gray-600">
-                  <span className="font-semibold">ACTION:</span> {log.ACTION || '---'}
-                </p> */}
-
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-semibold">업데이트:</span>{' '}
-                  {ts ? new Date(ts).toLocaleString('ko-KR') : '---'}
-                </p>
+                <div className="bg-[#6b7280] text-white text-center text-xs py-2 rounded-b-lg">
+                  START
+                </div>
               </div>
-
-              <div className="bg-[#6b7280] text-white text-center text-xs py-2 rounded-b-lg">
-                START
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 로그 출력 섹션 */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          {selectedLog?.TITLE || 'RPA'} 로그
-        </h2>
-        <div className="space-y-3">
-          {selectedLog.LOG
-            ? selectedLog.LOG.split('\n')
-                .filter((line) => line.trim() !== '')
-                .map((line, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    {line}
-                  </div>
-                ))
-            : (
-              <div className="text-gray-400 text-sm">
-                로그 데이터가 없습니다.
-              </div>
-            )}
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      {/* 로그 상세 출력 섹션 */}
+      {selectedLog && (
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            {selectedLog?.TITLE || 'RPA'} 로그
+          </h2>
+          <div className="space-y-3">
+            {selectedLog.LOG
+              ? selectedLog.LOG.split('\n')
+                  .filter((line) => line.trim() !== '')
+                  .map((line, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      {line}
+                    </div>
+                  ))
+              : (
+                <div className="text-gray-400 text-sm">
+                  로그 데이터가 없습니다.
+                </div>
+              )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

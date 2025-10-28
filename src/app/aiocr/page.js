@@ -144,20 +144,30 @@ function AiOcrPage() {
     });
   };
 
-  // 컴포넌트 마운트 시 이력 가져오기
+  // 컴포넌트 마운트 시 초기화 및 이력 가져오기
   useEffect(() => {
+    // 페이지 로드 시 항상 초기 상태로 리셋
+    setCurrentSessionId(null);
+    setExtractedText('');
+    setExtractedTable('');
+    setFile(null);
+    
     if (session) {
       fetchOcrHistory();
     }
   }, [session]);
 
-  // URL 파라미터에서 작업 ID 처리
+  // URL 파라미터에서 작업 ID 처리 (홈페이지에서 링크로 온 경우만)
   useEffect(() => {
     const workId = searchParams.get('work');
     if (workId && ocrHistory.length > 0) {
       const work = ocrHistory.find(w => w._id === workId);
       if (work) {
         selectWork(work);
+        // URL에서 work 파라미터 제거 (브라우저 히스토리 업데이트)
+        const url = new URL(window.location);
+        url.searchParams.delete('work');
+        window.history.replaceState({}, '', url);
       }
     }
   }, [searchParams, ocrHistory]);

@@ -176,7 +176,7 @@ function Home() {
                         href="/aillm" 
                         className="text-blue-600 font-medium text-sm hover:text-blue-700"
                       >
-                        새 대화방 시작하기 →
+                         대화방 시작하기 →
                       </Link>
                     </div>
                   </div>
@@ -254,7 +254,7 @@ function Home() {
                         href="/aiocr" 
                         className="text-green-600 font-medium text-sm hover:text-green-700"
                       >
-                        새 OCR 작업하기 →
+                         OCR 작업하기 →
                       </Link>
                     </div>
                   </div>

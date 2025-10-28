@@ -22,7 +22,7 @@ function AiOcrPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // 작업 이력 관리 상태
-  const [ocrHistory, setOcrHistory] = useState([]);ㅎ
+  const [ocrHistory, setOcrHistory] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState(null);

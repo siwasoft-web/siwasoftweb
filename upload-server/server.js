@@ -30,8 +30,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// JSON 파싱 미들웨어
-app.use(express.json());
+// JSON 파싱 미들웨어 (Base64 업로드 대비 용량 상향)
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Multer 설정 - 파일 타입에 따라 다른 저장 위치
 const storage = multer.diskStorage({

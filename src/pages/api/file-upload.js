@@ -24,17 +24,24 @@ export default async function handler(req, res) {
     const form = formidable({
       uploadDir: '/tmp',
       keepExtensions: true,
-      maxFileSize: 50 * 1024 * 1024, // 50MB
+      maxFileSize: 100 * 1024 * 1024, // 100MB (base64 전송 시 약 1.33배 커짐)
     });
 
     const [fields, files] = await form.parse(req);
-    
-    if (!files.file || !files.file[0]) {
-      console.log('No file found in request');
-      return res.status(400).json({ error: 'No file uploaded' });
+
+    if (!files || !files.file) {
+      console.log('No file found in request (files or files.file missing)');
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    uploadedFile = files.file[0];
+    // formidable 버전에 따라 단일 파일이 배열이 아닐 수 있음: 배열/단일 모두 처리
+    const fileField = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!fileField) {
+      console.log('File field empty');
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    uploadedFile = fileField;
     console.log('File parsed:', uploadedFile.originalFilename);
     
     // 파일을 읽어서 Buffer로 변환
@@ -62,20 +69,26 @@ export default async function handler(req, res) {
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
-      console.error('Upload server error:', errorText);
-      throw new Error(`Upload server error: ${uploadResponse.status} - ${errorText}`);
+      console.error('Upload server error:', uploadResponse.status, errorText);
+      return res.status(502).json({
+        success: false,
+        error: 'Upload server error',
+        status: uploadResponse.status,
+        details: errorText
+      });
     }
 
     const result = await uploadResponse.json();
     console.log('Upload successful:', result);
     
-    res.status(200).json(result);
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error('File upload error:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
+      success: false,
       error: 'File upload failed',
-      details: error.message 
+      details: error?.message || String(error) 
     });
   } finally {
     // 임시 파일 정리

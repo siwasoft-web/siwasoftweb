@@ -237,13 +237,15 @@ function AiOcrPage() {
       });
       
       if (!uploadResponse.ok) {
-        throw new Error('파일 업로드 실패');
+        let detail = '';
+        try { detail = await uploadResponse.text(); } catch {}
+        throw new Error(`파일 업로드 실패${detail ? `: ${detail}` : ''}`);
       }
       
       const uploadResult = await uploadResponse.json();
       
       if (!uploadResult.success) {
-        throw new Error(uploadResult.message || '파일 업로드 실패');
+        throw new Error(uploadResult.message || uploadResult.error || '파일 업로드 실패');
       }
       
       console.log('파일 업로드 성공:', uploadResult.file);

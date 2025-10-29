@@ -255,6 +255,8 @@ function AiOcrPage() {
         filePath: uploadResult.file.path
       };
       
+      console.log('OCR 요청 시작:', ocrRequestBody);
+      
       const ocrResponse = await fetch('/api/ocrmcp', {
         method: 'POST',
         headers: {
@@ -263,11 +265,14 @@ function AiOcrPage() {
         body: JSON.stringify(ocrRequestBody),
       });
       
+      console.log('OCR 응답 상태:', ocrResponse.status);
+      
       if (!ocrResponse.ok) {
         throw new Error('OCR 실행 실패');
       }
       
       const result = await ocrResponse.json();
+      console.log('OCR 처리 결과:', result);
       
       // 3. 결과 설정
       const extractedTextResult = result.text || '텍스트 추출 결과가 없습니다.';

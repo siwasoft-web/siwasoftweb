@@ -65,7 +65,11 @@ export default async function handler(req, res) {
     if (isVercel) {
       // Vercel 환경: 파일 내용을 Base64로 전달
       try {
-        const fileResponse = await fetch(`http://221.139.227.131:8003/files/${tool}/${filename}`);
+        console.log(`Vercel 환경: 파일 다운로드 시도 - ${filename}`);
+        const fileResponse = await fetch(`http://221.139.227.131:8003/files/${tool}/${filename}`, {
+          timeout: 30000 // 30초 타임아웃
+        });
+        
         if (fileResponse.ok) {
           const fileBuffer = await fileResponse.arrayBuffer();
           const base64Data = Buffer.from(fileBuffer).toString('base64');
@@ -74,11 +78,16 @@ export default async function handler(req, res) {
             filename: filename,
             file_data: base64Data,
             tool: tool,
-            is_vercel: true
+            is_vercel: true,
+            target_dir: defaultTargetDir,
+            out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+            recursive: recursive || false
           };
-          console.log('Vercel 환경: 파일 내용을 Base64로 전달');
+          console.log('Vercel 환경: 파일 내용을 Base64로 전달 성공');
         } else {
-          throw new Error('파일 다운로드 실패');
+          const errorText = await fileResponse.text();
+          console.error('파일 다운로드 실패:', fileResponse.status, errorText);
+          throw new Error(`파일 다운로드 실패: ${fileResponse.status} - ${errorText}`);
         }
       } catch (error) {
         console.error('파일 다운로드 오류:', error);
@@ -91,6 +100,7 @@ export default async function handler(req, res) {
           file_path: actualFilePath,
           is_vercel: true
         };
+        console.log('Vercel 환경: 파일 다운로드 실패로 기존 방식 사용');
       }
     } else {
       // 로컬 환경: 기존 방식
@@ -107,42 +117,70 @@ export default async function handler(req, res) {
 
     let fastApiResult;
     try {
+      console.log('FastAPI 서버에 OCR 요청 전송 중...');
       const fastApiResponse = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        timeout: 120000 // 2분 타임아웃 (OCR 처리 시간 고려)
       });
+
+      console.log('FastAPI 응답 상태:', fastApiResponse.status);
 
       if (!fastApiResponse.ok) {
         const errorText = await fastApiResponse.text();
         console.error('FastAPI 오류 응답:', errorText);
         
-        // FastAPI 서버 오류 시 테스트 응답 반환
-        console.log('FastAPI 서버 오류로 인해 테스트 응답 반환');
+        // FastAPI 서버 오류 시 상세한 오류 정보 반환
+        const errorMessage = `FastAPI 서버 오류 (${fastApiResponse.status})\n파일: ${filename}\n도구: ${tool}\n요청 경로: ${actualFilePath}\n오류 상세: ${errorText}`;
+        
         fastApiResult = {
-          text: `FastAPI 서버 오류 (${fastApiResponse.status})\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}\n오류: ${errorText}`,
-          table: `FastAPI 서버 오류 (${fastApiResponse.status})\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}\n오류: ${errorText}`
+          text: errorMessage,
+          table: errorMessage,
+          error: true,
+          status: fastApiResponse.status
         };
       } else {
         fastApiResult = await fastApiResponse.json();
-        console.log('FastAPI 응답:', fastApiResult);
+        console.log('FastAPI 응답 성공:', {
+          success: fastApiResult.ok,
+          hasText: !!fastApiResult.text,
+          hasTable: !!fastApiResult.table
+        });
       }
     } catch (error) {
       console.error('FastAPI 요청 오류:', error);
       
-      // 네트워크 오류 시 테스트 응답 반환
-      console.log('FastAPI 서버 연결 오류로 인해 테스트 응답 반환');
+      // 네트워크 오류 시 상세한 오류 정보 반환
+      const errorMessage = `FastAPI 서버 연결 오류\n파일: ${filename}\n도구: ${tool}\n요청 경로: ${actualFilePath}\n오류: ${error.message}`;
+      
       fastApiResult = {
-        text: `테스트 텍스트 추출 결과 (서버 연결 오류)\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}`,
-        table: `테스트 테이블 추출 결과 (서버 연결 오류)\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}`
+        text: errorMessage,
+        table: errorMessage,
+        error: true,
+        connectionError: true
       };
     }
 
     // Vercel 환경에서는 FastAPI 결과를 직접 반환 (파일 시스템 접근 불가)
     if (isVercel) {
       console.log('Vercel 환경: FastAPI 결과 직접 반환');
+      
+      // FastAPI에서 오류가 발생한 경우
+      if (fastApiResult.error) {
+        return res.status(500).json({
+          success: false,
+          message: `${tool.toUpperCase()} 처리 중 오류가 발생했습니다`,
+          text: fastApiResult.text || '처리 중 오류가 발생했습니다.',
+          table: fastApiResult.table || '',
+          error: true,
+          fastApiResult: fastApiResult
+        });
+      }
+      
+      // 성공적인 처리 결과 반환
       return res.status(200).json({
         success: true,
         message: `${tool.toUpperCase()} 처리가 완료되었습니다`,

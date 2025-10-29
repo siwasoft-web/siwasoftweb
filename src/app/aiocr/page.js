@@ -234,6 +234,16 @@ function AiOcrPage() {
       const directUploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE; // e.g., https://upload.example.com
       const uploadEndpoint = directUploadBase ? `${directUploadBase.replace(/\/$/, '')}/upload` : '/api/file-upload';
       
+      // const uploadResponse = await fetch(uploadEndpoint, {
+      //   method: 'POST',
+      //   body: formData,
+      // });
+      if (typeof window !== 'undefined' && window.location.protocol === 'https:' && uploadEndpoint.startsWith('http://')) {
+        throw new Error(
+          'HTTPS 환경에서는 HTTP 업로드 엔드포인트에 직접 연결할 수 없습니다. 업로드 서버에 HTTPS를 적용하거나 NEXT_PUBLIC_UPLOAD_BASE 값을 HTTPS 주소로 변경해 주세요.'
+        );
+      }
+
       const uploadResponse = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,

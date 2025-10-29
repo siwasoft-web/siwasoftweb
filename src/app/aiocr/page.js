@@ -227,11 +227,14 @@ function AiOcrPage() {
     setIsLoading(true);
     
     try {
-      // 1. 파일 업로드 서버로 파일 업로드 (프록시 API 사용)
+      // 1. 파일 업로드 서버로 파일 업로드
       const formData = new FormData();
       formData.append('file', file);
       
-      const uploadResponse = await fetch('/api/file-upload', {
+      const directUploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE; // e.g., https://upload.example.com
+      const uploadEndpoint = directUploadBase ? `${directUploadBase.replace(/\/$/, '')}/upload` : '/api/file-upload';
+      
+      const uploadResponse = await fetch(uploadEndpoint, {
         method: 'POST',
         body: formData,
       });

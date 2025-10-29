@@ -545,7 +545,7 @@ function Setting() {
   useEffect(() => {
     loadUserSettings();
     loadEmbeddingSources();
-    // loadRagCollections(); // PDF/기본 컬렉션
+    loadRagCollections(); // PDF/기본 컬렉션
     loadGitCollections(); // Git(emd2) 컬렉션
     loadSavedGitSources(); // 저장된 Git ID 목록
   }, []);

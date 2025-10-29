@@ -7,10 +7,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { filename, tool, target_dir, out_dir, recursive, base64Data } = req.body;
+    const { filename, tool, target_dir, out_dir, recursive, base64Data, filePath } = req.body;
     
     // 디버깅을 위한 로깅
-    console.log('OCR MCP 요청:', { filename, tool, target_dir, out_dir, recursive });
+    console.log('OCR MCP 요청:', { filename, tool, target_dir, out_dir, recursive, filePath });
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -24,49 +24,42 @@ export default async function handler(req, res) {
     const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
     const isVercel = process.env.VERCEL === '1';
     
-    // Vercel 환경과 로컬 환경을 다르게 처리
-    let apiEndpoint, requestBody;
+    // 파일 업로드 서버에서 받은 파일 경로 사용
+    let actualFilePath, defaultTargetDir;
     
-    if (isVercel && base64Data) {
-      // Vercel 환경: Base64 데이터를 직접 우리 서버로 전송
-      console.log('Vercel 환경: Base64 데이터 직접 전송');
-      apiEndpoint = `${baseUrl}/${tool}`;
-      requestBody = {
-        base64_data: base64Data,
-        filename: filename,
-        out_dir: '/home/siwasoft/siwasoft/mcp/out'
-      };
+    if (filePath) {
+      // 파일 업로드 서버에서 받은 경로 사용
+      actualFilePath = filePath;
+      defaultTargetDir = path.dirname(filePath);
+      console.log('파일 업로드 서버에서 받은 경로 사용:', actualFilePath);
     } else {
-      // 로컬 환경: 기존 방식 (파일 경로 기반)
-      let filePath, defaultTargetDir;
-      
+      // 기존 방식 (fallback)
       if (tool === 'img') {
         defaultTargetDir = '/home/siwasoft/siwasoft/mcp/img';
-        filePath = path.join(target_dir || defaultTargetDir, filename);
-        apiEndpoint = `${baseUrl}/img`;
+        actualFilePath = path.join(target_dir || defaultTargetDir, filename);
       } else {
         defaultTargetDir = '/home/siwasoft/siwasoft/mcp/pdf';
-        filePath = path.join(target_dir || defaultTargetDir, filename);
-        apiEndpoint = `${baseUrl}/pdf`;
+        actualFilePath = path.join(target_dir || defaultTargetDir, filename);
       }
+    }
 
-      // 파일 존재 확인
-      console.log('파일 경로 확인:', filePath);
-      console.log('파일 존재 여부:', fs.existsSync(filePath));
-      
-      if (!fs.existsSync(filePath)) {
-        console.log('파일을 찾을 수 없음:', filePath);
-        return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${filePath}` });
-      }
-
-      requestBody = {
-        target_dir: target_dir || defaultTargetDir,
-        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-        recursive: recursive || false
-      };
+    // 파일 존재 확인
+    console.log('파일 경로 확인:', actualFilePath);
+    console.log('파일 존재 여부:', fs.existsSync(actualFilePath));
+    
+    if (!fs.existsSync(actualFilePath)) {
+      console.log('파일을 찾을 수 없음:', actualFilePath);
+      return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${actualFilePath}` });
     }
 
     // FastAPI 서버에 요청 보내기
+    const apiEndpoint = `${baseUrl}/${tool}`;
+    const requestBody = {
+      target_dir: defaultTargetDir,
+      out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+      recursive: recursive || false
+    };
+
     console.log('API 엔드포인트:', apiEndpoint);
     console.log('요청 바디:', requestBody);
 

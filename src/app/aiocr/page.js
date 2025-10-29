@@ -227,82 +227,63 @@ function AiOcrPage() {
     setIsLoading(true);
     
     try {
-      // 1. 파일을 Base64로 변환
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const base64Data = e.target.result;
-          
-          // 2. PDF 업로드
-          const uploadResponse = await fetch('/api/upload-pdf', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              file: base64Data,
-              filename: file.name
-            }),
-          });
-          
-          if (!uploadResponse.ok) {
-            throw new Error('PDF 업로드 실패');
-          }
-          
-          const uploadResult = await uploadResponse.json();
-          
-          // 3. OCR 실행 (Vercel 환경 고려)
-          const ocrRequestBody = {
-            filename: uploadResult.filename,
-            tool: selectedTool
-          };
-          
-          // Vercel 환경인 경우 Base64 데이터 전송
-          if (uploadResult.isVercel && uploadResult.base64Data) {
-            ocrRequestBody.base64Data = uploadResult.base64Data;
-            ocrRequestBody.isVercel = true;
-            console.log('Vercel 환경: Base64 데이터로 OCR 처리');
-          }
-          
-          const ocrResponse = await fetch('/api/ocrmcp', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(ocrRequestBody),
-          });
-          
-          if (!ocrResponse.ok) {
-            throw new Error('OCR 실행 실패');
-          }
-          
-          const result = await ocrResponse.json();
-          
-          // 4. 결과 설정
-          const extractedTextResult = result.text || '텍스트 추출 결과가 없습니다.';
-          const extractedTableResult = result.table || '테이블 추출 결과가 없습니다.';
-          
-          setExtractedText(extractedTextResult);
-          setExtractedTable(extractedTableResult);
-          
-          // 5. 결과 저장
-          await saveOcrResult(uploadResult.filename, selectedTool, extractedTextResult, extractedTableResult);
-          
-        } catch (error) {
-          console.error('OCR 처리 중 오류:', error);
-          setExtractedText(`오류가 발생했습니다: ${error.message}`);
-          setExtractedTable('');
-        } finally {
-          setIsLoading(false);
-        }
+      // 1. 파일 업로드 서버로 파일 업로드
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadResponse = await fetch('http://221.139.227.131:8003/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('파일 업로드 실패');
+      }
+      
+      const uploadResult = await uploadResponse.json();
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.message || '파일 업로드 실패');
+      }
+      
+      console.log('파일 업로드 성공:', uploadResult.file);
+      
+      // 2. OCR 실행
+      const ocrRequestBody = {
+        filename: uploadResult.file.savedName,
+        tool: selectedTool,
+        filePath: uploadResult.file.path
       };
       
-      reader.readAsDataURL(file);
+      const ocrResponse = await fetch('/api/ocrmcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ocrRequestBody),
+      });
+      
+      if (!ocrResponse.ok) {
+        throw new Error('OCR 실행 실패');
+      }
+      
+      const result = await ocrResponse.json();
+      
+      // 3. 결과 설정
+      const extractedTextResult = result.text || '텍스트 추출 결과가 없습니다.';
+      const extractedTableResult = result.table || '테이블 추출 결과가 없습니다.';
+      
+      setExtractedText(extractedTextResult);
+      setExtractedTable(extractedTableResult);
+      
+      // 4. 결과 저장
+      await saveOcrResult(uploadResult.file.savedName, selectedTool, extractedTextResult, extractedTableResult);
       
     } catch (error) {
-      console.error('파일 읽기 오류:', error);
-      setExtractedText(`파일 읽기 오류: ${error.message}`);
+      console.error('OCR 처리 중 오류:', error);
+      setExtractedText(`오류가 발생했습니다: ${error.message}`);
       setExtractedTable('');
+    } finally {
       setIsLoading(false);
     }
   };

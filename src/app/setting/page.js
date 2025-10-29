@@ -1106,7 +1106,7 @@ function Setting() {
 
   // 사이트 편집 시작
   const handleEditSite = (site) => {
-    setEditingSiteId(site.id);
+    setEditingSiteId(site.code);
     setEditValues({
       name: site.name
     });
@@ -1115,7 +1115,7 @@ function Setting() {
   // 사이트 편집 저장
   const handleSaveSiteEdit = async () => {
     try {
-      const site = sites.find((s) => s.id === editingSiteId);
+      const site = sites.find(s => s.code === editingSiteId);
       const newName = editValues.name?.trim();
       if (!site || !newName) {
         alert("사이트 이름을 입력해주세요.");
@@ -1137,7 +1137,7 @@ function Setting() {
       // ✅ 프론트 리스트 갱신
       setSites(
         sites.map((s) =>
-          s.id === editingSiteId ? { ...s, name: newName } : s
+          s.code === editingSiteId ? { ...s, name: newName } : s
         )
       );
 
@@ -1217,10 +1217,13 @@ function Setting() {
   };
 
   // 사이트 필터링
-  const filteredSites = sites.filter(site => 
-    site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
-    site.code.toLowerCase().includes(siteSearchTerm.toLowerCase())
-  );
+  const filteredSites = sites.filter(site => {
+    const term = siteSearchTerm?.toLowerCase() || '';
+    return (
+      site.name?.toLowerCase().includes(term) ||
+      String(site.code || '').toLowerCase().includes(term)
+    );
+  });
 
   // 프로젝트 필터링
   const filteredProjects = siteProjects.filter(project =>
@@ -1971,9 +1974,9 @@ function Setting() {
                             </tr>
                           )}
                           {filteredSites.map((site) => (
-                            <tr key={site.id} className="hover:bg-gray-50 transition-colors duration-200 group">
+                            <tr key={site.code} className="hover:bg-gray-50 transition-colors duration-200 group">
                               <td className="px-4 py-3 whitespace-nowrap">
-                                {editingSiteId === site.id ? (
+                                {editingSiteId === site.code ? (
                                   <input
                                     type="text"
                                     value={editValues.name || site.name}
@@ -1993,19 +1996,19 @@ function Setting() {
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <button 
-                                  onClick={() => handleViewSiteDetails(site.id)}
+                                  onClick={() => handleViewSiteDetails(site.code)}
                                   className={`inline-flex items-center px-3 py-1.5 border text-xs font-medium rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200 shadow-sm hover:shadow-md ${
-                                    selectedSiteId === site.id 
+                                    selectedSiteId === site.code 
                                       ? 'border-blue-500 text-white bg-blue-500 hover:bg-blue-600 focus:ring-blue-300' 
                                       : 'border-gray-300 text-gray-800 bg-gray-100 hover:bg-gray-200 focus:ring-gray-300'
                                   }`}
                                 >
-                                  {selectedSiteId === site.id ? '선택됨' : '확인'}
+                                  {selectedSiteId === site.code ? '선택됨' : '확인'}
                                 </button>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-center">
                                 <div className="flex items-center justify-center gap-2">
-                                  {editingSiteId === site.id ? (
+                                  {editingSiteId === site.code ? (
                                     <>
                                       <button 
                                         onClick={handleSaveSiteEdit}

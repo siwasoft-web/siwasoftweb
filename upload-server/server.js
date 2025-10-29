@@ -330,6 +330,40 @@ app.get('/files/img', (req, res) => {
     }
 });
 
+// 특정 파일 다운로드 엔드포인트 (Vercel용)
+app.get('/files/:type/:filename', (req, res) => {
+    try {
+        const { type, filename } = req.params;
+        
+        if (!['pdf', 'img'].includes(type)) {
+            return res.status(400).json({
+                success: false,
+                message: '지원하지 않는 파일 타입입니다.'
+            });
+        }
+        
+        const fileDir = type === 'pdf' ? PDF_DIR : IMG_DIR;
+        const filePath = path.join(fileDir, filename);
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({
+                success: false,
+                message: '파일을 찾을 수 없습니다.'
+            });
+        }
+        
+        res.download(filePath, filename);
+        
+    } catch (error) {
+        console.error('파일 다운로드 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '파일 다운로드 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+});
+
 // 에러 핸들링 미들웨어
 app.use((error, req, res, next) => {
     if (error instanceof multer.MulterError) {

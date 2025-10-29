@@ -59,14 +59,51 @@ export default async function handler(req, res) {
 
     // FastAPI 서버에 요청 보내기
     const apiEndpoint = `${baseUrl}/${tool}`;
-    const requestBody = {
-      target_dir: defaultTargetDir,
-      out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-      recursive: recursive || false
-    };
+    
+    // Vercel 환경에서는 파일 내용을 직접 전달
+    let requestBody;
+    if (isVercel) {
+      // Vercel 환경: 파일 내용을 Base64로 전달
+      try {
+        const fileResponse = await fetch(`http://221.139.227.131:8003/files/${tool}/${filename}`);
+        if (fileResponse.ok) {
+          const fileBuffer = await fileResponse.arrayBuffer();
+          const base64Data = Buffer.from(fileBuffer).toString('base64');
+          
+          requestBody = {
+            filename: filename,
+            file_data: base64Data,
+            tool: tool,
+            is_vercel: true
+          };
+          console.log('Vercel 환경: 파일 내용을 Base64로 전달');
+        } else {
+          throw new Error('파일 다운로드 실패');
+        }
+      } catch (error) {
+        console.error('파일 다운로드 오류:', error);
+        // 파일 다운로드 실패 시 기존 방식 사용
+        requestBody = {
+          target_dir: defaultTargetDir,
+          out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+          recursive: recursive || false,
+          filename: filename,
+          file_path: actualFilePath,
+          is_vercel: true
+        };
+      }
+    } else {
+      // 로컬 환경: 기존 방식
+      requestBody = {
+        target_dir: defaultTargetDir,
+        out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
+        recursive: recursive || false
+      };
+    }
 
     console.log('API 엔드포인트:', apiEndpoint);
     console.log('요청 바디:', requestBody);
+    console.log('Vercel 환경 여부:', isVercel);
 
     let fastApiResult;
     try {
@@ -85,8 +122,8 @@ export default async function handler(req, res) {
         // FastAPI 서버 오류 시 테스트 응답 반환
         console.log('FastAPI 서버 오류로 인해 테스트 응답 반환');
         fastApiResult = {
-          text: `테스트 텍스트 추출 결과\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}`,
-          table: `테스트 테이블 추출 결과\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}`
+          text: `FastAPI 서버 오류 (${fastApiResponse.status})\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}\n오류: ${errorText}`,
+          table: `FastAPI 서버 오류 (${fastApiResponse.status})\n파일: ${filename}\n도구: ${tool}\n경로: ${actualFilePath}\n오류: ${errorText}`
         };
       } else {
         fastApiResult = await fastApiResponse.json();

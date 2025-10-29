@@ -43,13 +43,18 @@ export default async function handler(req, res) {
       }
     }
 
-    // 파일 존재 확인
+    // 파일 존재 확인 (Vercel 환경에서는 건너뛰기)
     console.log('파일 경로 확인:', actualFilePath);
-    console.log('파일 존재 여부:', fs.existsSync(actualFilePath));
     
-    if (!fs.existsSync(actualFilePath)) {
-      console.log('파일을 찾을 수 없음:', actualFilePath);
-      return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${actualFilePath}` });
+    if (!isVercel) {
+      console.log('파일 존재 여부:', fs.existsSync(actualFilePath));
+      
+      if (!fs.existsSync(actualFilePath)) {
+        console.log('파일을 찾을 수 없음:', actualFilePath);
+        return res.status(404).json({ error: `${tool.toUpperCase()} file not found: ${actualFilePath}` });
+      }
+    } else {
+      console.log('Vercel 환경: 파일 존재 확인 건너뛰기');
     }
 
     // FastAPI 서버에 요청 보내기
@@ -78,9 +83,11 @@ export default async function handler(req, res) {
     }
 
     const fastApiResult = await fastApiResponse.json();
+    console.log('FastAPI 응답:', fastApiResult);
 
     // Vercel 환경에서는 FastAPI 결과를 직접 반환 (파일 시스템 접근 불가)
     if (isVercel) {
+      console.log('Vercel 환경: FastAPI 결과 직접 반환');
       return res.status(200).json({
         success: true,
         message: `${tool.toUpperCase()} 처리가 완료되었습니다`,

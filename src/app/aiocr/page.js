@@ -306,11 +306,25 @@ function AiOcrPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-800">OCR 작업 목록</h2>
                 <button
-                  onClick={startNewWork}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="새 작업 시작"
+                  onClick={async () => {
+                    const confirmed = window.confirm('정말 삭제하시겠습니까? 선택한 OCR 작업과 파일이 삭제됩니다.');
+                    if (!confirmed) return;
+                    try {
+                      const res = await fetch('/api/ocr-history', { method: 'DELETE' });
+                      const data = await res.json();
+                      if (data?.success) {
+                        setOcrHistory([]);
+                        setCurrentSessionId(null);
+                        setExtractedText('');
+                        setExtractedTable('');
+                      }
+                    } catch (e) {
+                      console.error('Error clearing OCR history:', e);
+                    }
+                  }}
+                  className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded border border-red-200 hover:border-red-300"
                 >
-                  <Plus size={20} />
+                  정리
                 </button>
               </div>
               

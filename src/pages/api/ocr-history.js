@@ -102,26 +102,33 @@ export default async function handler(req, res) {
     try {
       const { sessionId } = req.query;
       
-      if (!sessionId) {
-        return res.status(400).json({ success: false, error: 'Session ID is required' });
-      }
-      
       const db = (await connectDB).db(DBName);
       const collection = db.collection('ocr_history');
       
-      // 사용자 소유 확인
-      const record = await collection.findOne({ _id: sessionId, userId: userId });
-      if (!record) {
-        return res.status(404).json({ success: false, error: 'Record not found' });
+      if (!sessionId) {
+        // 세션 ID가 없으면 해당 사용자 전체 기록 삭제
+        const deleteResult = await collection.deleteMany({ userId: userId });
+        return res.status(200).json({
+          success: true,
+          deletedCount: deleteResult.deletedCount || 0,
+          message: '모든 OCR 작업 결과가 삭제되었습니다'
+        });
+      } else {
+        // 단일 세션 삭제
+        // 사용자 소유 확인
+        const record = await collection.findOne({ _id: sessionId, userId: userId });
+        if (!record) {
+          return res.status(404).json({ success: false, error: 'Record not found' });
+        }
+        
+        // 데이터베이스에서 삭제
+        await collection.deleteOne({ _id: sessionId, userId: userId });
+        
+        return res.status(200).json({
+          success: true,
+          message: 'OCR 작업 결과가 삭제되었습니다'
+        });
       }
-      
-      // 데이터베이스에서 삭제
-      await collection.deleteOne({ _id: sessionId, userId: userId });
-      
-      res.status(200).json({
-        success: true,
-        message: 'OCR 작업 결과가 삭제되었습니다'
-      });
       
     } catch (error) {
       console.error('Error deleting OCR result:', error);

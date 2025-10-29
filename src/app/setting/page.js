@@ -5,10 +5,12 @@ import PageHeader from "@/components/PageHeader";
 import styles from './Setting.module.css';
 import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
+import { useSession } from 'next-auth/react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://221.139.227.131:8010';
 
 function Setting() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents' | 'admin'
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -543,7 +545,7 @@ function Setting() {
   useEffect(() => {
     loadUserSettings();
     loadEmbeddingSources();
-    loadRagCollections(); // PDF/기본 컬렉션
+    // loadRagCollections(); // PDF/기본 컬렉션
     loadGitCollections(); // Git(emd2) 컬렉션
     loadSavedGitSources(); // 저장된 Git ID 목록
   }, []);
@@ -1148,8 +1150,32 @@ function Setting() {
     setEditValues({});
   };
 
-  const handleViewSiteDetails = (siteId) => {
-    setSelectedSiteId(siteId);
+  const handleViewSiteDetails = async (siteCode) => {
+    try {
+      setSelectedSiteId(siteCode);
+      setLoadingProjects(true);
+
+      const userEmail = session?.user?.email;
+      const res = await fetch(`${API_BASE}/api/v1/rpa/project/list`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userEmail,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '프로젝트 목록 불러오기 실패');
+
+      const filtered = (data.data || []).filter(
+        (p) => String(p.SITE_CODE) === String(siteCode)
+      );
+
+      setSiteProjects(filtered);
+    } catch (err) {
+      alert(`프로젝트 로드 실패: ${err.message}`);
+    } finally {
+      setLoadingProjects(false);
+    }
   };
 
   const handleViewProjectDetails = (projectId) => {
@@ -1184,25 +1210,27 @@ function Setting() {
   });
 
   // 프로젝트 필터링
-  const filteredProjects = siteProjects.filter(project =>
-    project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
-    project.code.toLowerCase().includes(projectSearchTerm.toLowerCase())
+  const filteredProjects = siteProjects.filter((project) =>
+    (project.PROJECT_TITLE || '').toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
+    String(project.PROJECT_CODE || '').toLowerCase().includes(projectSearchTerm.toLowerCase())
   );
   
   // admin 페이지 연동용
   // 사이트 목록 연동
   const fetchSites = async () => {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/rpa/site/list`);
-    const data = await res.json();
-    setSites(data.data || []);
-  } catch (err) {
-    console.error('사이트 목록 불러오기 실패:', err);
-    setErrorSites(err.message);
-  } finally {
-    setLoadingSites(false);
-  }
-};
+    try {
+      setLoadingSites(true);
+      const res = await fetch(`${API_BASE}/api/v1/rpa/site/list`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '사이트 목록 불러오기 실패');
+      setSites(data.data || []);
+    } catch (err) {
+      console.error('사이트 목록 불러오기 실패:', err);
+      setErrorSites(err.message);
+    } finally {
+      setLoadingSites(false);
+    }
+  };
   useEffect(() => {
     if (activeTab === 'admin') fetchSites();
   }, [activeTab]);
@@ -2082,80 +2110,102 @@ function Setting() {
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-100">
                             {filteredProjects.map((project) => (
-                              <tr key={project.id} className="hover:bg-gray-50 transition-colors duration-200 group">
+                              <tr 
+                                key={project.PROJECT_CODE} 
+                                className="hover:bg-gray-50 transition-colors duration-200 group"
+                              >
+                                {/* 🔹 프로젝트 이름 */}
                                 <td className="px-4 py-3">
-                                  {editingProjectId === project.id ? (
+                                  {editingProjectId === project.PROJECT_CODE ? (
                                     <input
                                       type="text"
-                                      value={editValues.name}
-                                      onChange={(e) => setEditValues({...editValues, name: e.target.value})}
+                                      value={editValues.PROJECT_TITLE || ''}
+                                      onChange={(e) => setEditValues({ ...editValues, PROJECT_TITLE: e.target.value })}
                                       className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                   ) : (
-                                    <div className="text-sm font-medium text-gray-800 truncate" title={project.name}>{project.name}</div>
+                                    <div 
+                                      className="text-sm font-medium text-gray-800 truncate"
+                                      title={project.PROJECT_TITLE}
+                                    >
+                                      {project.PROJECT_TITLE || '---'}
+                                    </div>
                                   )}
                                 </td>
+
+                                {/* 🔹 프로젝트 코드 */}
                                 <td className="px-4 py-3">
-                                  {editingProjectId === project.id ? (
-                                    <input
-                                      type="text"
-                                      value={editValues.code}
-                                      onChange={(e) => setEditValues({...editValues, code: e.target.value})}
-                                      className="w-full px-2 py-1 text-sm font-mono border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                  ) : (
-                                    <span className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md" title={project.code}>
-                                      {project.code}
-                                    </span>
-                                  )}
+                                  <span 
+                                    className="inline-block text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded-md"
+                                    title={project.PROJECT_CODE}
+                                  >
+                                    {project.PROJECT_CODE}
+                                  </span>
                                 </td>
-                                <td 
-                                  className={`px-4 py-3 ${editingProjectId !== project.id ? 'cursor-pointer hover:bg-blue-50' : ''} transition-colors`}
-                                  onClick={(e) => editingProjectId !== project.id && handleShowUsers(project.users, e)}
+
+                                {/* 🔹 접근 사용자 */}
+                                <td
+                                  className={`px-4 py-3 ${editingProjectId !== project.PROJECT_CODE ? 'cursor-pointer hover:bg-blue-50' : ''} transition-colors`}
+                                  onClick={(e) => editingProjectId !== project.PROJECT_CODE && handleShowUsers(project.USER_INFO, e)}
                                 >
-                                  {editingProjectId === project.id ? (
+                                  {editingProjectId === project.PROJECT_CODE ? (
                                     <input
                                       type="text"
-                                      value={editValues.users}
-                                      onChange={(e) => setEditValues({...editValues, users: e.target.value})}
+                                      value={(editValues.USER_INFO || []).join(', ')}
+                                      onChange={(e) =>
+                                        setEditValues({
+                                          ...editValues,
+                                          USER_INFO: e.target.value.split(',').map((v) => v.trim()),
+                                        })
+                                      }
                                       placeholder="email1@example.com, email2@example.com"
                                       className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                   ) : (
-                                    <div 
+                                    <div
                                       className="text-xs text-gray-600 truncate"
-                                      title={project.users.map(u => u.email).join(', ')}
+                                      title={(project.USER_INFO || []).join(', ')}
                                     >
-                                      {project.users.map((user, idx) => (
-                                        <span key={idx}>
-                                          {user.email}
-                                          {idx < project.users.length - 1 && <span>, </span>}
-                                        </span>
-                                      ))}
+                                      {(project.USER_INFO && project.USER_INFO.length > 0)
+                                        ? project.USER_INFO.map((email, idx) => (
+                                            <span key={idx}>
+                                              {email}
+                                              {idx < project.USER_INFO.length - 1 && <span>, </span>}
+                                            </span>
+                                          ))
+                                        : <span className="text-gray-400">등록된 사용자 없음</span>}
                                     </div>
                                   )}
                                 </td>
-                                <td className="px-3 py-3 whitespace-nowrap">
-                                  <span className="text-xs text-gray-600">{project.lastUpdate}</span>
+
+                                {/* 🔹 업데이트 날짜 */}
+                                <td className="px-3 py-3 whitespace-nowrap text-center">
+                                  <span className="text-xs text-gray-600">
+                                    {project.updated_date || '---'}
+                                  </span>
                                 </td>
+
+                                {/* 🔹 확인 버튼 */}
                                 <td className="px-2 py-3 whitespace-nowrap text-center">
-                                  <button 
-                                    onClick={() => handleViewProjectDetails(project.id)}
+                                  <button
+                                    onClick={() => handleViewProjectDetails(project.PROJECT_CODE)}
                                     className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                   >
                                     확인
                                   </button>
                                 </td>
+
+                                {/* 🔹 수정 / 저장 / 취소 버튼 */}
                                 <td className="px-2 py-3 whitespace-nowrap text-center">
-                                  {editingProjectId === project.id ? (
+                                  {editingProjectId === project.PROJECT_CODE ? (
                                     <div className="flex items-center justify-center gap-1">
-                                      <button 
+                                      <button
                                         onClick={handleSaveProjectEdit}
                                         className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                       >
                                         확인
                                       </button>
-                                      <button 
+                                      <button
                                         onClick={handleCancelProjectEdit}
                                         className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                       >
@@ -2163,7 +2213,7 @@ function Setting() {
                                       </button>
                                     </div>
                                   ) : (
-                                    <button 
+                                    <button
                                       onClick={() => handleEditProject(project)}
                                       className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                     >

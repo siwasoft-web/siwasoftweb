@@ -392,7 +392,10 @@ function AiOcrPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteOcrResult(work._id);
+                                const confirmed = window.confirm('정말 삭제하시겠습니까? 선택한 OCR 작업과 파일이 삭제됩니다.');
+                                if (confirmed) {
+                                  deleteOcrResult(work._id);
+                                }
                               }}
                               className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                               title="삭제"

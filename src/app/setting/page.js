@@ -6,6 +6,8 @@ import styles from './Setting.module.css';
 import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://221.139.227.131:8010';
+
 function Setting() {
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents' | 'admin'
   const [isEditing, setIsEditing] = useState(false);
@@ -47,11 +49,7 @@ function Setting() {
   const [selectedCarbonCollection, setSelectedCarbonCollection] = useState('');
   
   // Admin 탭 상태
-  const [sites, setSites] = useState([
-    { id: 1, name: '시와소프트', code: 'SIWA001' },
-    { id: 2, name: '테스트회사', code: 'TEST001' },
-    { id: 3, name: '샘플회사', code: 'SAMP001' }
-  ]);
+  const [sites, setSites] = useState([]);
   const [newSiteName, setNewSiteName] = useState('');
   const [newSiteCode, setNewSiteCode] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1179,7 +1177,33 @@ function Setting() {
     project.name.toLowerCase().includes(projectSearchTerm.toLowerCase()) ||
     project.code.toLowerCase().includes(projectSearchTerm.toLowerCase())
   );
+  
+  // admin 페이지 연동용
+  // 사이트 목록 연동
+  const fetchSites = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/site/list`);
+      const data = await res.json();
+      setSites(data.data || []);
+    } catch (err) {
+      console.error('사이트 목록 불러오기 실패:', err);
+    }
+  };
+  useEffect(() => {
+    if (activeTab === 'admin') fetchSites();
+  }, [activeTab]);
 
+  //프로젝트 목록 연동
+  const fetchProjectsBySite = async (siteCode) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/list/${siteCode}`);
+      const data = await res.json();
+      setSiteProjects(data.data || []);
+    } catch (err) {
+      console.error('프로젝트 목록 불러오기 실패:', err);
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className={styles.page}>

@@ -181,13 +181,21 @@ function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-center mt-4">
-                    <Link 
-                      href="/aillm" 
-                      className="text-blue-600 font-medium hover:text-blue-700"
-                    >
-                      대화방 시작하기 →
-                    </Link>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="bg-blue-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <MessageSquare className="text-blue-600" size={32} />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-800 mb-2">AI-LLM 대화를 시작해보세요</h4>
+                      <p className="text-sm text-gray-500 mb-6">업무 관련 질문을 하고 AI의 도움을 받아보세요</p>
+                      <Link 
+                        href="/aillm" 
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <MessageSquare size={20} />
+                        대화방 시작하기 →
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>
@@ -259,13 +267,21 @@ function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-center mt-4">
-                    <Link 
-                      href="/aiocr" 
-                      className="text-green-600 font-medium hover:text-green-700"
-                    >
-                      OCR 작업하기 →
-                    </Link>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="bg-green-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <ScanText className="text-green-600" size={32} />
+                      </div>
+                      <h4 className="text-lg font-medium text-gray-800 mb-2">OCR 작업을 시작해보세요</h4>
+                      <p className="text-sm text-gray-500 mb-6">문서 이미지를 업로드하고 텍스트를 추출해보세요</p>
+                      <Link 
+                        href="/aiocr" 
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <ScanText size={20} />
+                        OCR 작업하기 →
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>

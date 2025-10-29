@@ -3,7 +3,6 @@
 
 import formidable from 'formidable';
 import fs from 'fs';
-import FormData from 'form-data';
 
 export const config = {
   api: {
@@ -42,18 +41,21 @@ export default async function handler(req, res) {
     const fileBuffer = fs.readFileSync(uploadedFile.filepath);
     console.log('File buffer size:', fileBuffer.length);
     
-    // 파일 업로드 서버로 전송
-    const formData = new FormData();
-    formData.append('file', fileBuffer, {
-      filename: uploadedFile.originalFilename,
-      contentType: uploadedFile.mimetype
-    });
-
-    console.log('Sending to upload server...');
-    const uploadResponse = await fetch('http://221.139.227.131:8003/upload', {
+    // Base64로 인코딩하여 전송
+    const base64Data = fileBuffer.toString('base64');
+    console.log('Base64 encoding completed');
+    
+    // 파일 업로드 서버로 전송 (Base64 방식)
+    const uploadResponse = await fetch('http://221.139.227.131:8003/upload-base64', {
       method: 'POST',
-      body: formData,
-      headers: formData.getHeaders()
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        file: base64Data,
+        filename: uploadedFile.originalFilename,
+        mimetype: uploadedFile.mimetype
+      })
     });
 
     console.log('Upload server response status:', uploadResponse.status);

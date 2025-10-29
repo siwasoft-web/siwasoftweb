@@ -151,6 +151,94 @@ app.post('/upload', upload.single('file'), (req, res) => {
     }
 });
 
+// Base64 파일 업로드 엔드포인트 (Vercel 호환용)
+app.post('/upload-base64', (req, res) => {
+    try {
+        const { file, filename, mimetype } = req.body;
+        
+        if (!file || !filename) {
+            return res.status(400).json({
+                success: false,
+                message: '파일 데이터와 파일명이 필요합니다.'
+            });
+        }
+
+        // Base64 데이터를 Buffer로 변환
+        const fileBuffer = Buffer.from(file, 'base64');
+        
+        // 파일 타입에 따라 저장 위치 결정
+        let saveDir, fileExt;
+        if (mimetype === 'application/pdf') {
+            saveDir = PDF_DIR;
+            fileExt = '.pdf';
+        } else if (mimetype && mimetype.startsWith('image/')) {
+            saveDir = IMG_DIR;
+            fileExt = path.extname(filename) || '.jpg';
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: '지원하지 않는 파일 타입입니다. PDF 또는 이미지 파일만 업로드 가능합니다.'
+            });
+        }
+
+        // 파일명 생성
+        const timestamp = Date.now();
+        const originalName = filename;
+        const ext = path.extname(originalName);
+        
+        let safeName;
+        try {
+            const nameWithoutExt = path.basename(originalName, ext);
+            
+            // 파일명을 안전하게 처리
+            safeName = nameWithoutExt
+                .replace(/[^a-zA-Z0-9가-힣\s\-_]/g, '_')
+                .replace(/\s+/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '')
+                .substring(0, 50);
+            
+            if (!safeName || safeName.length < 2) {
+                safeName = 'document';
+            }
+        } catch (error) {
+            console.error('파일명 처리 오류:', error);
+            safeName = 'document';
+        }
+        
+        const newFileName = `${safeName}_${timestamp}${fileExt}`;
+        const filePath = path.join(saveDir, newFileName);
+        
+        // 파일 저장
+        fs.writeFileSync(filePath, fileBuffer);
+        
+        const fileInfo = {
+            originalName: filename,
+            savedName: newFileName,
+            size: fileBuffer.length,
+            mimetype: mimetype,
+            path: filePath,
+            uploadTime: new Date().toISOString()
+        };
+
+        console.log('Base64 파일 업로드 성공:', fileInfo);
+
+        res.json({
+            success: true,
+            message: '파일이 성공적으로 업로드되었습니다.',
+            file: fileInfo
+        });
+
+    } catch (error) {
+        console.error('Base64 파일 업로드 오류:', error);
+        res.status(500).json({
+            success: false,
+            message: '파일 업로드 중 오류가 발생했습니다.',
+            error: error.message
+        });
+    }
+});
+
 // 여러 파일 업로드 엔드포인트
 app.post('/upload-multiple', upload.array('files', 10), (req, res) => {
     try {

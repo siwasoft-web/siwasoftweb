@@ -50,6 +50,8 @@ function Setting() {
   
   // Admin 탭 상태
   const [sites, setSites] = useState([]);
+  const [loadingSites, setLoadingSites] = useState(true);
+  const [errorSites, setErrorSites] = useState(null);
   const [newSiteName, setNewSiteName] = useState('');
   const [newSiteCode, setNewSiteCode] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1055,30 +1057,52 @@ function Setting() {
   };
 
   // 새 사이트 추가
-  const handleAddSite = () => {
-    if (!newSiteName.trim() || !newSiteCode.trim()) {
-      alert('회사명과 회사코드를 모두 입력하세요.');
+  const handleAddSite = async () => {
+    if (!newSiteCode || !newSiteName) {
+      alert("SITE_CODE와 SITE_NAME을 모두 입력해주세요.");
       return;
     }
-    
-    const newSite = {
-      id: Date.now(),
-      name: newSiteName.trim(),
-      code: newSiteCode.trim().toUpperCase()
-    };
-    
-    setSites([...sites, newSite]);
-    setNewSiteName('');
-    setNewSiteCode('');
-    setShowAddForm(false);
-  };
 
-  // 사이트 삭제
-  const handleDeleteSite = (id) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      setSites(sites.filter(site => site.id !== id));
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/site/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: parseInt(newSiteCode),
+          name: newSiteName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "사이트 등록 실패");
+
+      alert(`사이트 등록 완료: ${data.data.name}`);
+      setShowSiteModal(false);
+      setNewSiteCode("");
+      setNewSiteName("");
+      fetchSites(); // 등록 후 목록 갱신
+    } catch (err) {
+      alert(`등록 실패: ${err.message}`);
     }
   };
+
+  const handleDeleteSite = async (siteCode) => {
+    if (!confirm(`SITE_CODE ${siteCode} 사이트를 삭제하시겠습니까?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/site/delete/${siteCode}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "사이트 삭제 실패");
+
+      alert(`${data.name || siteCode} 삭제 완료`);
+      fetchSites(); // 목록 갱신
+    } catch (err) {
+      alert(`삭제 실패: ${err.message}`);
+    }
+  }
 
   // 사이트 편집 시작
   const handleEditSite = (site) => {
@@ -1089,14 +1113,40 @@ function Setting() {
   };
 
   // 사이트 편집 저장
-  const handleSaveSiteEdit = () => {
-    setSites(sites.map(site => 
-      site.id === editingSiteId 
-        ? { ...site, name: editValues.name }
-        : site
-    ));
-    setEditingSiteId(null);
-    setEditValues({});
+  const handleSaveSiteEdit = async () => {
+    try {
+      const site = sites.find((s) => s.id === editingSiteId);
+      const newName = editValues.name?.trim();
+      if (!site || !newName) {
+        alert("사이트 이름을 입력해주세요.");
+        return;
+      }
+
+      // 실제 MongoDB 업데이트 요청
+      const res = await fetch(`${API_BASE}/api/v1/rpa/site/update/${site.code}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "사이트 수정 실패");
+
+      alert(`사이트명 수정 완료: ${data.name}`);
+
+      // ✅ 프론트 리스트 갱신
+      setSites(
+        sites.map((s) =>
+          s.id === editingSiteId ? { ...s, name: newName } : s
+        )
+      );
+
+      setEditingSiteId(null);
+      setEditValues({});
+    } catch (err) {
+      alert(`수정 실패: ${err.message}`);
+      console.error(err);
+    }
   };
 
   // 사이트 편집 취소
@@ -1181,14 +1231,17 @@ function Setting() {
   // admin 페이지 연동용
   // 사이트 목록 연동
   const fetchSites = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/site/list`);
-      const data = await res.json();
-      setSites(data.data || []);
-    } catch (err) {
-      console.error('사이트 목록 불러오기 실패:', err);
-    }
-  };
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/rpa/site/list`);
+    const data = await res.json();
+    setSites(data.data || []);
+  } catch (err) {
+    console.error('사이트 목록 불러오기 실패:', err);
+    setErrorSites(err.message);
+  } finally {
+    setLoadingSites(false);
+  }
+};
   useEffect(() => {
     if (activeTab === 'admin') fetchSites();
   }, [activeTab]);
@@ -1203,7 +1256,7 @@ function Setting() {
       console.error('프로젝트 목록 불러오기 실패:', err);
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1910,14 +1963,23 @@ function Setting() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
+                          {filteredSites.length === 0 && !loadingSites && (
+                            <tr>
+                              <td colSpan="4" className="text-center py-6 text-gray-400">
+                                등록된 사이트가 없습니다.
+                              </td>
+                            </tr>
+                          )}
                           {filteredSites.map((site) => (
                             <tr key={site.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 {editingSiteId === site.id ? (
                                   <input
                                     type="text"
-                                    value={editValues.name}
-                                    onChange={(e) => setEditValues({...editValues, name: e.target.value})}
+                                    value={editValues.name || site.name}
+                                    onChange={(e) =>
+                                      setEditValues({ ...editValues, name: e.target.value })
+                                    }
                                     className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   />
                                 ) : (
@@ -1967,7 +2029,7 @@ function Setting() {
                                         수정
                                       </button>
                                       <button 
-                                        onClick={() => handleDeleteSite(site.id)}
+                                        onClick={() => handleDeleteSite(site.code)}
                                         className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                       >
                                         삭제
@@ -2372,7 +2434,7 @@ function Setting() {
                 />
               </div>
               
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">SITE_ID</label>
                 <input
                   type="text"
@@ -2381,25 +2443,27 @@ function Setting() {
                   placeholder=""
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
+              </div> */}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">SITE_NAME</label>
                 <input
                   type="text"
+                  value={newSiteName}
+                  onChange={(e) => setNewSiteName(e.target.value.toUpperCase())}
                   placeholder=""
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">USER_INFO (쉼표 구분)</label>
                 <input
                   type="text"
                   placeholder="예: user1, user2"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-              </div>
+              </div> */}
             </div>
             
             <div className="mt-6 flex gap-2 justify-end">

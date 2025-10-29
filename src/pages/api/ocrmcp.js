@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,6 +24,7 @@ export default async function handler(req, res) {
     // 환경 변수에서 API 베이스 URL 가져오기 (fallback으로 IP 사용)
     const baseUrl = process.env.OCR_API_BASE || 'http://221.139.227.131:8001';
     const isVercel = process.env.VERCEL === '1';
+    const sessionId = randomUUID();
     
     // 파일 업로드 서버에서 받은 파일 경로 사용
     let actualFilePath, defaultTargetDir;
@@ -81,7 +83,8 @@ export default async function handler(req, res) {
             is_vercel: true,
             target_dir: defaultTargetDir,
             out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-            recursive: recursive || false
+            recursive: recursive || false,
+            session_id: sessionId
           };
           console.log('Vercel 환경: 파일 내용을 Base64로 전달 성공');
         } else {
@@ -98,7 +101,8 @@ export default async function handler(req, res) {
           recursive: recursive || false,
           filename: filename,
           file_path: actualFilePath,
-          is_vercel: true
+          is_vercel: true,
+          session_id: sessionId
         };
         console.log('Vercel 환경: 파일 다운로드 실패로 기존 방식 사용');
       }
@@ -107,7 +111,10 @@ export default async function handler(req, res) {
       requestBody = {
         target_dir: defaultTargetDir,
         out_dir: out_dir || '/home/siwasoft/siwasoft/mcp/out',
-        recursive: recursive || false
+        recursive: recursive || false,
+        session_id: sessionId,
+        filename: filename,
+        file_path: actualFilePath
       };
     }
 
@@ -186,7 +193,8 @@ export default async function handler(req, res) {
         message: `${tool.toUpperCase()} 처리가 완료되었습니다`,
         text: fastApiResult.text || '텍스트 추출 결과가 없습니다.',
         table: fastApiResult.table || '테이블 추출 결과가 없습니다.',
-        fastApiResult: fastApiResult
+        fastApiResult: fastApiResult,
+        session_id: fastApiResult.session_id || sessionId
       });
     }
 
@@ -194,25 +202,29 @@ export default async function handler(req, res) {
     // 툴에 따른 응답 처리
     switch (tool) {
       case 'pdf':
-        // PDF 파싱: 텍스트와 테이블 추출
-        const pdfResult = readProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
+        // PDF 파싱: 세션 격리 디렉터리에서 결과 읽기 우선
+        const pdfResult = readProcessedResultsBySession('/home/siwasoft/siwasoft/mcp/end', sessionId) 
+          || readProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
         return res.status(200).json({
           success: true,
           message: 'PDF 파싱이 완료되었습니다',
           text: pdfResult.text,
           table: pdfResult.table,
-          fastApiResult: fastApiResult
+          fastApiResult: fastApiResult,
+          session_id: sessionId
         });
 
       case 'img':
-        // IMG 모드: 이미지 OCR 처리된 결과 파일들 읽기
-        const imgResult = readImageProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
+        // IMG 모드: 세션 격리 디렉터리에서 결과 읽기 우선
+        const imgResult = readImageProcessedResultsBySession('/home/siwasoft/siwasoft/mcp/end', sessionId) 
+          || readImageProcessedResults('/home/siwasoft/siwasoft/mcp/end', filename);
         return res.status(200).json({
           success: true,
           message: '이미지 OCR 처리가 완료되었습니다',
           text: imgResult.text,
           table: imgResult.table,
-          fastApiResult: fastApiResult
+          fastApiResult: fastApiResult,
+          session_id: sessionId
         });
 
       default:
@@ -287,6 +299,54 @@ function readProcessedResults(outputDir, targetFilename) {
   }
 }
 
+function readProcessedResultsBySession(endRoot, sessionId) {
+  try {
+    if (!sessionId) return null;
+    const sessionDir = path.join(endRoot, sessionId);
+    if (!fs.existsSync(sessionDir) || !fs.statSync(sessionDir).isDirectory()) {
+      return null;
+    }
+
+    let textContent = '';
+    let tableContent = '';
+
+    const pdfDirs = fs.readdirSync(sessionDir).filter(item => {
+      const p = path.join(sessionDir, item);
+      return fs.statSync(p).isDirectory();
+    });
+
+    pdfDirs.forEach(pdfDir => {
+      const pdfPath = path.join(sessionDir, pdfDir);
+      const pageDirs = fs.readdirSync(pdfPath).filter(item => {
+        const p = path.join(pdfPath, item);
+        return fs.statSync(p).isDirectory() && item.startsWith('page_');
+      });
+
+      pageDirs.forEach(pageDir => {
+        const pagePath = path.join(pdfPath, pageDir);
+        const mdPath = path.join(pagePath, `${pageDir}.md`);
+        if (fs.existsSync(mdPath)) {
+          const originalContent = fs.readFileSync(mdPath, 'utf-8');
+          textContent += `\n=== ${pdfDir}/${pageDir} (원본) ===\n${originalContent}\n`;
+        }
+        const tablePath = path.join(pagePath, `${pageDir}.tables.proc.md`);
+        if (fs.existsSync(tablePath)) {
+          const tableContentStr = fs.readFileSync(tablePath, 'utf-8');
+          tableContent += `\n=== ${pdfDir}/${pageDir} (AI 처리된 테이블) ===\n${tableContentStr}\n`;
+        }
+      });
+    });
+
+    return {
+      text: textContent.trim() || '텍스트 추출 결과가 없습니다.',
+      table: tableContent.trim() || '테이블 추출 결과가 없습니다.'
+    };
+  } catch (e) {
+    console.error('세션 결과 읽기 오류:', e);
+    return null;
+  }
+}
+
 function readImageProcessedResults(outputDir, targetFilename) {
   try {
     let textContent = '';
@@ -330,5 +390,39 @@ function readImageProcessedResults(outputDir, targetFilename) {
       text: '이미지 결과를 읽는 중 오류가 발생했습니다.',
       table: ''
     };
+  }
+}
+
+function readImageProcessedResultsBySession(endRoot, sessionId) {
+  try {
+    if (!sessionId) return null;
+    const sessionDir = path.join(endRoot, sessionId);
+    if (!fs.existsSync(sessionDir) || !fs.statSync(sessionDir).isDirectory()) {
+      return null;
+    }
+
+    let textContent = '';
+    const imgDirs = fs.readdirSync(sessionDir).filter(item => {
+      const p = path.join(sessionDir, item);
+      return fs.statSync(p).isDirectory();
+    });
+
+    imgDirs.forEach(imgDir => {
+      const imgPath = path.join(sessionDir, imgDir);
+      const files = fs.readdirSync(imgPath).filter(f => f.endsWith('.md') && f.startsWith('img_'));
+      files.forEach(file => {
+        const fp = path.join(imgPath, file);
+        const content = fs.readFileSync(fp, 'utf-8');
+        textContent += `\n=== ${imgDir}/${file} ===\n${content}\n`;
+      });
+    });
+
+    return {
+      text: textContent.trim() || '이미지에서 텍스트를 추출하지 못했습니다.',
+      table: '이미지 OCR에서는 테이블 추출을 지원하지 않습니다.'
+    };
+  } catch (e) {
+    console.error('세션 이미지 결과 읽기 오류:', e);
+    return null;
   }
 }

@@ -73,50 +73,8 @@ function Setting() {
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [siteProjects, setSiteProjects] = useState([
-    { 
-      id: 1, 
-      name: '물류_자동화', 
-      code: '1234001', 
-      users: [
-        { name: '홍길동', email: 'hong@siwasoft.com' },
-        { name: '김철수', email: 'kim@siwasoft.com' },
-        { name: '이영희', email: 'lee@siwasoft.com' }
-      ], 
-      lastUpdate: '2024-10-20',
-      tasks: [
-        { id: 1, name: '물류목록_확인', status: '실행중', updateTime: '2025-10-11 15:35:11', usage: '미사용' },
-        { id: 2, name: '발주확인', status: '오류', updateTime: '2025-10-11 15:35', usage: '미사용' },
-        { id: 3, name: '웹사이트_업데이트', status: '대기중', updateTime: '2025-10-11 15:35', usage: '미사용' }
-      ]
-    },
-    { 
-      id: 2, 
-      name: '인사_자동화', 
-      code: '1234003', 
-      users: [
-        { name: '이영희', email: 'lee@siwasoft.com' },
-        { name: '박민수', email: 'park@siwasoft.com' }
-      ], 
-      lastUpdate: '2024-10-21',
-      tasks: [
-        { id: 1, name: '급여계산', status: '완료', updateTime: '2025-10-11 14:20:30', usage: '사용중' },
-        { id: 2, name: '연차관리', status: '실행중', updateTime: '2025-10-11 14:25', usage: '사용중' }
-      ]
-    },
-    { 
-      id: 3, 
-      name: '재고_자동화', 
-      code: '1234002', 
-      users: [
-        { name: '최지훈', email: 'choi@siwasoft.com' }
-      ], 
-      lastUpdate: '2024-10-22',
-      tasks: [
-        { id: 1, name: '재고확인', status: '대기중', updateTime: '2025-10-11 16:00', usage: '미사용' }
-      ]
-    }
-  ]);
+  const [siteProjects, setSiteProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
 
   // 공통: 안전한 JSON 파서
   const safeParseJson = async (response) => {

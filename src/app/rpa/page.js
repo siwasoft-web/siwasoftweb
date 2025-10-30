@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
+// External API base no longer used; we fetch from our internal API
 
 function RpaPage() {
   const { data: session } = useSession();
@@ -33,22 +33,17 @@ function RpaPage() {
     }
   });
 
-  // project_code 리스트 가져오기
+  // project_code 리스트 가져오기 (로그인한 유저 이메일 기준)
   const fetchProjects = async () => {
     try {
       const userEmail = session?.user?.email;
       if (!userEmail) return;
 
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/list`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userEmail,
-        },
-      });
+      const res = await fetch('/api/rpa/projects-by-user');
 
       if (!res.ok) throw new Error(`서버 응답 오류 (${res.status})`);
       const json = await res.json();
-      setProjects(json.data || []);
+      setProjects(Array.isArray(json?.data) ? json.data : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -67,15 +62,9 @@ function RpaPage() {
   if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
 
   try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/delete/${projectCode}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || '삭제 실패');
-
-      alert(`${data.PROJECT_TITLE || projectCode} 삭제 완료`);
-      fetchProjects();
+      // 삭제 로직은 외부 API 연동 시에만 동작했습니다.
+      // 내부 DB에 맞춘 삭제 엔드포인트가 준비되면 아래를 교체하세요.
+      alert('삭제 기능은 아직 내부 DB 엔드포인트와 연동되지 않았습니다.');
     } catch (err) {
       alert(`삭제 실패: ${err.message}`);
     }

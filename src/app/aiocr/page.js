@@ -509,7 +509,7 @@ function AiOcrPage() {
                     Drag 'n' drop a PDF or image, or click to select
                   </p>
                   <p className="text-sm text-gray-500">
-                    PDF, PNG, JPG, WEBP
+                    
                   </p>
                   {file && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">

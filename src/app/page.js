@@ -136,13 +136,13 @@ function Home() {
               </div>
               
               {/* 대화방 목록 섹션 */}
-              <div className="mt-6">
+              <div className="mt-6 bg-gray-50 rounded-xl border border-gray-200 p-4">
                 {isLoadingSessions ? (
                   <div className="text-gray-500 text-sm">대화방 목록을 불러오는 중...</div>
                 ) : chatSessions.length > 0 ? (
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-3">최근 대화방</h4>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {chatSessions.slice(0, 5).map((session) => (
                         <Link 
                           key={session._id} 
@@ -213,13 +213,13 @@ function Home() {
               </div>
               
               {/* OCR 작업 이력 섹션 */}
-              <div className="mt-6">
+              <div className="mt-6 bg-gray-50 rounded-xl border border-gray-200 p-4">
                 {isLoadingOcrHistory ? (
                   <div className="text-gray-500 text-sm">작업 이력을 불러오는 중...</div>
                 ) : ocrHistory.length > 0 ? (
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-3">최근 OCR 작업</h4>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 h-48 overflow-y-auto">
                       {ocrHistory.slice(0, 5).map((work) => (
                         <Link 
                           key={work._id} 

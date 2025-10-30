@@ -70,6 +70,8 @@ function Setting() {
   const [siteSearchTerm, setSiteSearchTerm] = useState('');
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
   const [taskSearchTerm, setTaskSearchTerm] = useState('');
+  const [rpaLogs, setRpaLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   // 인라인 편집 상태
   const [editingSiteId, setEditingSiteId] = useState(null);
   const [editingProjectId, setEditingProjectId] = useState(null);
@@ -77,6 +79,9 @@ function Setting() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [siteProjects, setSiteProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // 세션 유저 확인용
+  const userEmail = session?.user?.email;
 
   // 공통: 안전한 JSON 파서
   const safeParseJson = async (response) => {
@@ -1026,7 +1031,10 @@ function Setting() {
     try {
       const res = await fetch(`${API_BASE}/api/v1/rpa/site/add`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userEmail,  // ✅ 추가
+        },
         body: JSON.stringify({
           code: parseInt(newSiteCode),
           name: newSiteName,
@@ -1117,31 +1125,96 @@ function Setting() {
 
   // 프로젝트 편집 시작
   const handleEditProject = (project) => {
-    setEditingProjectId(project.id);
+    setEditingProjectId(project.PROJECT_CODE);
     setEditValues({
-      name: project.name,
-      code: project.code,
-      users: project.users.map(u => u.email).join(', ')
+      PROJECT_TITLE: project.PROJECT_TITLE ?? project.name ?? "",
+      USER_INFO: Array.isArray(project.USER_INFO)
+        ? project.USER_INFO.join(", ")
+        : (project.USER_INFO ?? ""),
     });
   };
 
   // 프로젝트 편집 저장
-  const handleSaveProjectEdit = () => {
-    setSiteProjects(siteProjects.map(project => 
-      project.id === editingProjectId 
-        ? { 
-            ...project, 
-            name: editValues.name, 
-            code: editValues.code,
-            users: editValues.users.split(',').map(email => ({ 
-              name: email.trim().split('@')[0], 
-              email: email.trim() 
-            }))
-          }
-        : project
-    ));
-    setEditingProjectId(null);
-    setEditValues({});
+  const handleSaveProjectEdit = async () => {
+    try {
+      if (!editingProjectId) {
+        alert("수정 중인 프로젝트가 없습니다.");
+        return;
+      }
+
+      const userEmail = session?.user?.email;
+      if (!userEmail) {
+        alert("로그인 정보가 없습니다.");
+        return;
+      }
+
+      const targetProject = siteProjects.find(
+        p =>
+          String(p.PROJECT_CODE || p.code) === String(editingProjectId)
+      );
+
+      if (!targetProject) {
+        alert("프로젝트 정보를 찾을 수 없습니다.");
+        console.warn("DEBUG targetProject not found. siteProjects:", siteProjects);
+        return;
+      }
+
+      const projectCode = targetProject.PROJECT_CODE;
+
+      // ✅ 입력값 우선, 기존값은 fallback
+      const newTitle =
+        ((typeof editValues?.PROJECT_TITLE === "string"
+          ? editValues.PROJECT_TITLE.trim()
+          : targetProject.PROJECT_TITLE) || `프로젝트_${targetProject.PROJECT_CODE}`);
+
+      const newUsers = (() => {
+        const src = editValues?.USER_INFO;
+        if (Array.isArray(src)) {
+          // 이미 배열이면 그대로 사용
+          return src.map(v => String(v).trim()).filter(Boolean);
+        }
+        if (typeof src === "string") {
+          // "a, b, c" → ["a","b","c"]
+          return src.split(",").map(v => v.trim()).filter(Boolean);
+        }
+        // 편집 값 없으면 기존 값 유지
+        return Array.isArray(targetProject.USER_INFO) ? targetProject.USER_INFO : [];
+      })();
+
+      const payload = {
+        PROJECT_TITLE: newTitle,
+        USER_INFO: newUsers,
+      };
+
+      const res = await fetch(
+        `${API_BASE}/api/v1/rpa/project/update/${targetProject.PROJECT_CODE || targetProject.code}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userEmail,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "프로젝트 수정 실패");
+
+      alert(`✅ 프로젝트 수정 완료`);
+
+      console.log("📡 [UPDATE REQUEST]", targetProject, payload);
+
+      if (typeof handleViewSiteDetails === "function") {
+        await handleViewSiteDetails(selectedSiteId);
+      }
+
+      setEditingProjectId(null);
+      setEditValues({});
+    } catch (err) {
+      console.error("프로젝트 수정 오류:", err);
+      alert(`수정 실패: ${err.message}`);
+    }
   };
 
   // 프로젝트 편집 취소
@@ -1186,6 +1259,26 @@ function Setting() {
     if (confirm('정말 삭제하시겠습니까?')) {
       // 삭제 로직 구현
       console.log('Task deleted:', taskId);
+    }
+  };
+
+  // 프로젝트 삭제
+  const handleDeleteProject = async (projectCode) => {
+    if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/rpa/project/delete/${projectCode}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '삭제 실패');
+
+      alert(`🗑️ 삭제 완료: ${data.PROJECT_TITLE || projectCode}`);
+      fetchProjects();
+    } catch (err) {
+      console.error('프로젝트 삭제 오류:', err);
+      alert(`❌ 삭제 실패: ${err.message}`);
     }
   };
 
@@ -1235,17 +1328,6 @@ function Setting() {
     if (activeTab === 'admin') fetchSites();
   }, [activeTab]);
 
-  //프로젝트 목록 연동
-  const fetchProjectsBySite = async (siteCode) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/list/${siteCode}`);
-      const data = await res.json();
-      setSiteProjects(data.data || []);
-    } catch (err) {
-      console.error('프로젝트 목록 불러오기 실패:', err);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className={styles.page}>
@@ -1259,6 +1341,64 @@ function Setting() {
       </div>
     );
   }
+
+  // 프로젝트 생성
+  const handleCreateProject = async (siteCode, title = '', userList = []) => {
+    try {
+      if (!siteCode) {
+        alert('SITE_CODE가 유효하지 않습니다.');
+        return;
+      }
+
+      const payload = {
+        SITE_CODE: Number(siteCode),
+        PROJECT_TITLE: title,
+        USER_INFO: userList,
+      };
+
+      const res = await fetch(`${API_BASE}/api/v1/rpa/project/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.email || '',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '프로젝트 생성 실패');
+
+      alert(`프로젝트 생성 완료: ${data.PROJECT_TITLE}`);
+
+      // 사이트 상세(프로젝트 목록) 새로고침
+      if (typeof handleViewSiteDetails === 'function') {
+        await handleViewSiteDetails(siteCode);
+      }
+
+    } catch (err) {
+      console.error('프로젝트 생성 오류:', err);
+      alert(`생성 실패: ${err.message}`);
+    }
+  };
+
+  // RPA 로그 불러오기
+  const fetchRpaLogs = async (projectCode) => {
+    try {
+      if (!projectCode) return alert("프로젝트 코드가 유효하지 않습니다.");
+
+      setLoadingLogs(true);
+      const res = await fetch(`${API_BASE}/api/v1/rpa/rpa_log/list/${projectCode}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || "RPA 로그 불러오기 실패");
+      setRpaLogs(data.data || []);
+    } catch (err) {
+      console.error("RPA 로그 불러오기 오류:", err);
+      alert(`로그 불러오기 실패: ${err.message}`);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -2151,13 +2291,8 @@ function Setting() {
                                   {editingProjectId === project.PROJECT_CODE ? (
                                     <input
                                       type="text"
-                                      value={(editValues.USER_INFO || []).join(', ')}
-                                      onChange={(e) =>
-                                        setEditValues({
-                                          ...editValues,
-                                          USER_INFO: e.target.value.split(',').map((v) => v.trim()),
-                                        })
-                                      }
+                                      value={editValues.USER_INFO}
+                                      onChange={(e) => setEditValues({ ...editValues, USER_INFO: e.target.value })}
                                       placeholder="email1@example.com, email2@example.com"
                                       className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
@@ -2188,7 +2323,10 @@ function Setting() {
                                 {/* 🔹 확인 버튼 */}
                                 <td className="px-2 py-3 whitespace-nowrap text-center">
                                   <button
-                                    onClick={() => handleViewProjectDetails(project.PROJECT_CODE)}
+                                    onClick={() => {
+                                      setSelectedProjectId(project.PROJECT_CODE);
+                                      fetchRpaLogs(project.PROJECT_CODE);
+                                    }}
                                     className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-800 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                   >
                                     확인
@@ -2237,12 +2375,18 @@ function Setting() {
                     
                     {/* 새 자동화 추가 버튼 */}
                     <div className="mt-2 flex justify-end max-w-4xl">
-                      <button 
-                        onClick={() => setShowProjectModal(true)}
-                        className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
+                      {/* 자동화 생성 버튼 - 모달 대신 즉시 API 호출 */}
+                      <button
+                        onClick={() => {
+                          if (!selectedSiteId) {
+                            alert('먼저 사이트를 선택해주세요.');
+                            return;
+                          }
+                          handleCreateProject(selectedSiteId, '', []);
+                        }}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors duration-200"
                       >
-                        <Plus size={18} className="mr-2" />
-                        자동화 생성
+                        + 자동화 생성
                       </button>
                     </div>
                   </div>
@@ -2250,14 +2394,10 @@ function Setting() {
 
                 {/* 프로젝트 상세 - 자동화 작업 목록 */}
                 {selectedProjectId && (() => {
-                  const project = siteProjects.find(p => p.id === selectedProjectId);
-                  if (!project) return null;
-                  
-                  // 자동화 작업 필터링
-                  const filteredTasks = (project.tasks || []).filter(task =>
-                    task.name.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
-                    task.status.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
-                    task.updateTime.toLowerCase().includes(taskSearchTerm.toLowerCase())
+                  const filteredTasks = (rpaLogs || []).filter(log =>
+                    log.TITLE?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                    log.status_name?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+                    log.updated_date?.toLowerCase().includes(taskSearchTerm.toLowerCase())
                   );
                   
                   return (
@@ -2268,7 +2408,7 @@ function Setting() {
                           className={`flex items-center gap-2 hover:text-blue-600 transition-colors group ${styles.pageTitle}`}
                         >
                           <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
-                          <span>{project.name}</span>
+                          <span>프로젝트 {selectedProjectId}</span>
                         </button>
                         <div className="flex items-center gap-2">
                           <input
@@ -2318,29 +2458,43 @@ function Setting() {
                               {filteredTasks.map((task) => (
                                 <tr key={task.id} className="hover:bg-gray-50 transition-colors duration-200 group">
                                   <td className="px-4 py-3 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-800">{task.name}</div>
+                                    <div className="text-sm font-medium text-gray-800">{task.TITLE}</div>
                                   </td>
+
                                   <td className="px-4 py-3 whitespace-nowrap">
-                                    <span className={`inline-block text-sm px-2 py-1 rounded-md ${
-                                      task.status === '오류' ? 'text-red-600 bg-red-50' :
-                                      task.status === '완료' ? 'text-green-600 bg-green-50' :
-                                      task.status === '실행중' ? 'text-blue-600 bg-blue-50' :
-                                      'text-gray-600 bg-gray-100'
-                                    }`}>
-                                      {task.status}
+                                    <span
+                                      className={`inline-block text-sm px-2 py-1 rounded-md ${
+                                        task.status_name === '오류'
+                                          ? 'text-red-600 bg-red-50'
+                                          : task.status_name === '완료'
+                                          ? 'text-green-600 bg-green-50'
+                                          : task.status_name === '실행중'
+                                          ? 'text-blue-600 bg-blue-50'
+                                          : 'text-gray-600 bg-gray-100'
+                                      }`}
+                                    >
+                                      {task.status_name || '대기중'}
                                     </span>
                                   </td>
+
                                   <td className="px-4 py-3 whitespace-nowrap">
-                                    <span className="text-sm text-gray-600">{task.updateTime}</span>
+                                    <span className="text-sm text-gray-600">
+                                      {task.updated_at ? new Date(task.updated_at).toLocaleString('ko-KR') : '---'}
+                                    </span>
                                   </td>
+
                                   <td className="px-4 py-3 whitespace-nowrap text-center">
                                     <div className="flex items-center justify-center gap-2">
-                                      <span className={`text-xs px-2 py-1 rounded ${
-                                        task.usage === '사용중' ? 'text-green-700 bg-green-50' : 'text-gray-600 bg-gray-100'
-                                      }`}>
-                                        {task.usage}
+                                      <span
+                                        className={`text-xs px-2 py-1 rounded ${
+                                          task.usage === '사용중'
+                                            ? 'text-green-700 bg-green-50'
+                                            : 'text-gray-600 bg-gray-100'
+                                        }`}
+                                      >
+                                        {task.usage || '미사용'}
                                       </span>
-                                      <button 
+                                      <button
                                         onClick={() => handleDeleteTask(task.id)}
                                         className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
                                       >
@@ -2358,7 +2512,7 @@ function Setting() {
                       {/* 자동화 작업 개수 표시 */}
                       <div className="mt-4 max-w-4xl">
                         <p className="text-xs text-gray-400">
-                          총 {project.tasks?.length || 0}건 표시 중 (원본 {project.tasks?.length || 0}건)
+                          총 {rpaLogs.length || 0}건 표시 중 (원본 {rpaLogs.length || 0}건)
                         </p>
                       </div>
                     </div>
@@ -2498,8 +2652,8 @@ function Setting() {
         </div>
       )}
 
-      {/* 프로젝트 생성 모달 */}
-      {showProjectModal && (
+      {/* 프로젝트 생성 모달, 수정으로 대체 */}
+      {/* {showProjectModal && (
         <div 
           className="fixed inset-0 flex items-center justify-center"
           style={{ 
@@ -2580,7 +2734,7 @@ function Setting() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

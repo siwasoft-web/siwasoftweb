@@ -7,8 +7,6 @@ import { Pencil, Plus } from 'lucide-react';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
-
 function Setting() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents' | 'admin'
@@ -1029,7 +1027,7 @@ function Setting() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/site/add`, {
+      const res = await fetch(`/api/rpa/site/add`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1058,7 +1056,7 @@ function Setting() {
     if (!confirm(`SITE_CODE ${siteCode} 사이트를 삭제하시겠습니까?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/site/delete/${siteCode}`, {
+      const res = await fetch(`/api/rpa/site/delete/${siteCode}`, {
         method: "DELETE",
       });
 
@@ -1091,7 +1089,7 @@ function Setting() {
       }
 
       // 실제 MongoDB 업데이트 요청
-      const res = await fetch(`${API_BASE}/api/v1/rpa/site/update/${site.code}`, {
+      const res = await fetch(`/api/rpa/site/update/${site.code}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName }),
@@ -1187,7 +1185,7 @@ function Setting() {
       };
 
       const res = await fetch(
-        `${API_BASE}/api/v1/rpa/project/update/${targetProject.PROJECT_CODE || targetProject.code}`,
+        `/api/rpa/project/update/${targetProject.PROJECT_CODE || targetProject.code}`,
         {
           method: "PUT",
           headers: {
@@ -1229,7 +1227,7 @@ function Setting() {
       setLoadingProjects(true);
 
       const userEmail = session?.user?.email;
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/list`, {
+      const res = await fetch(`/api/rpa/project/list`, {
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': userEmail,
@@ -1267,7 +1265,7 @@ function Setting() {
     if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/delete/${projectCode}`, {
+      const res = await fetch(`/api/rpa/project/delete/${projectCode}`, {
         method: 'DELETE',
       });
 
@@ -1313,7 +1311,7 @@ function Setting() {
   const fetchSites = async () => {
     try {
       setLoadingSites(true);
-      const res = await fetch(`${API_BASE}/api/v1/rpa/site/list`);
+      const res = await fetch(`/api/rpa/site/list`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || '사이트 목록 불러오기 실패');
       setSites(data.data || []);
@@ -1356,7 +1354,7 @@ function Setting() {
         USER_INFO: userList,
       };
 
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/add`, {
+      const res = await fetch(`/api/rpa/project/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1387,7 +1385,7 @@ function Setting() {
       if (!projectCode) return alert("프로젝트 코드가 유효하지 않습니다.");
 
       setLoadingLogs(true);
-      const res = await fetch(`${API_BASE}/api/v1/rpa/rpa_log/list/${projectCode}`);
+      const res = await fetch(`/api/rpa/rpa_log/list/${projectCode}`);
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.detail || "RPA 로그 불러오기 실패");

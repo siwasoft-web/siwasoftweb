@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://221.139.227.131:8010';
+const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
 
 function RpaPage() {
   const { data: session } = useSession();

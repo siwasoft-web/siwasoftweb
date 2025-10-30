@@ -62,9 +62,13 @@ function RpaPage() {
   if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
 
   try {
-      // 삭제 로직은 외부 API 연동 시에만 동작했습니다.
-      // 내부 DB에 맞춘 삭제 엔드포인트가 준비되면 아래를 교체하세요.
-      alert('삭제 기능은 아직 내부 DB 엔드포인트와 연동되지 않았습니다.');
+      const res = await fetch(`/api/rpa/project/${projectCode}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || '삭제 실패');
+      alert(`${projectCode} 삭제 완료`);
+      fetchProjects();
     } catch (err) {
       alert(`삭제 실패: ${err.message}`);
     }

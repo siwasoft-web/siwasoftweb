@@ -1,39 +1,58 @@
-// src/pages/api/rpa/[...path].js
-
+// ✅ pages/api/rpa/[...path].js
 export default async function handler(req, res) {
-  try {
-    // URL 경로 파싱 (예: /api/rpa/project/add → ["project", "add"])
-    const { path = [] } = req.query;
-    const backendUrl = `http://221.139.227.131:8010/api/v1/rpa/${path.join("/")}`;
+  // ✅ OPTIONS 요청은 사전 승인 (CORS preflight)
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
 
+  console.log("💡 Proxy triggered:", req.method, req.url);
+
+  try {
+    // ✅ path 배열 안정화
+    let { path } = req.query;
+    if (!path) path = [];
+    if (!Array.isArray(path)) path = [path];
+
+    // ✅ 백엔드 주소
+    const backendUrl = `http://221.139.227.131:8010/api/v1/rpa/${path.join("/")}`;
     console.log(`[Proxy] ${req.method} → ${backendUrl}`);
 
-    // 요청 옵션 구성
-    const options = {
-      method: req.method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(req.headers["x-user-id"] && { "x-user-id": req.headers["x-user-id"] }),
-      },
-    };
+    // ✅ 헤더 구성
+    const headers = {};
+    if (req.headers["x-user-id"] && req.headers["x-user-id"] !== "undefined") {
+      headers["x-user-id"] = req.headers["x-user-id"];
+    }
 
-    // POST / PUT 등에서는 body 포함
+    // ✅ GET은 Content-Type 빼기 (preflight 방지)
+    if (req.method !== "GET") {
+      headers["Content-Type"] = "application/json";
+    }
+
+    // ✅ fetch 옵션 구성
+    const options = { method: req.method, headers };
+
     if (req.method !== "GET" && req.body && Object.keys(req.body).length > 0) {
       options.body = JSON.stringify(req.body);
     }
 
-    // 실제 FastAPI 서버에 요청
+    // ✅ FastAPI로 프록시
     const response = await fetch(backendUrl, options);
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
 
-    // FastAPI 응답 그대로 반환
+    console.log(`[Proxy Response] ${response.status}`);
     res.status(response.status).json(data);
-
   } catch (error) {
-    console.error("❌ [RPA Proxy Error]", error);
+    console.error("❌ Proxy error:", error);
     res.status(500).json({
-      error: "RPA Proxy request failed",
-      details: error.message,
+      error: "Proxy request failed",
+      message: error.message,
     });
   }
 }

@@ -1185,7 +1185,7 @@ function Setting() {
       };
 
       const res = await fetch(
-        `/api/rpa/project/update/${targetProject.PROJECT_CODE || targetProject.code}`,
+        `/api/rpa/projects/update/${targetProject.PROJECT_CODE || targetProject.code}`,
         {
           method: "PUT",
           headers: {
@@ -1227,22 +1227,28 @@ function Setting() {
       setLoadingProjects(true);
 
       const userEmail = session?.user?.email;
-      const res = await fetch(`/api/rpa/project/list`, {
+      if (!userEmail) {
+        throw new Error("로그인 정보가 없습니다. 세션 만료일 수 있습니다.");
+      }
+
+      console.log("🔍 userEmail:", userEmail);
+      console.log("🔍 fetch URL:", `/api/rpa/projects/list`);
+      const res = await fetch(`/api/rpa/projects/list`, {
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userEmail,
+          "Content-Type": "application/json",
+          "x-user-id": userEmail,
         },
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || '프로젝트 목록 불러오기 실패');
+      if (!res.ok) throw new Error(data.detail || "프로젝트 목록 불러오기 실패");
 
       const filtered = (data.data || []).filter(
         (p) => String(p.SITE_CODE) === String(siteCode)
       );
-
       setSiteProjects(filtered);
     } catch (err) {
+      console.error("handleViewSiteDetails 오류:", err);
       alert(`프로젝트 로드 실패: ${err.message}`);
     } finally {
       setLoadingProjects(false);
@@ -1265,7 +1271,7 @@ function Setting() {
     if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
 
     try {
-      const res = await fetch(`/api/rpa/project/delete/${projectCode}`, {
+      const res = await fetch(`/api/rpa/projects/delete/${projectCode}`, {
         method: 'DELETE',
       });
 
@@ -1354,7 +1360,7 @@ function Setting() {
         USER_INFO: userList,
       };
 
-      const res = await fetch(`/api/rpa/project/add`, {
+      const res = await fetch(`/api/rpa/projects/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

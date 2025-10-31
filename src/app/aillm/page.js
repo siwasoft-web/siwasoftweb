@@ -507,12 +507,12 @@ function AiLlmPage() {
           }
         `
       }} />
-      <div className="bg-transparent min-h-screen p-8">
+      <div className="bg-transparent min-h-screen p-4 sm:p-6 lg:p-8">
         <PageHeader title="AI LLM" />
 
-      <div className="flex h-[calc(100vh-160px)] bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
+      <div className="flex flex-col md:flex-row min-h-[calc(100dvh-160px)] bg-white rounded-2xl shadow-lg border border-gray-200/80 overflow-hidden">
         {/* Left Panel: Chat Sessions */}
-        <aside className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-200/80 flex flex-col">
+        <aside className="w-full md:w-1/3 md:max-w-sm bg-gray-50/50 border-b md:border-b-0 md:border-r border-gray-200/80 flex flex-col">
           <div className="p-4 border-b border-gray-200/80">
             <div className="flex justify-between items-center mb-4">
               <button 
@@ -543,7 +543,7 @@ function AiLlmPage() {
               />
             </div>
           </div>
-          <div className="flex-grow overflow-y-auto">
+          <div className="flex-grow overflow-y-auto max-h-72 md:max-h-none">
             {chatSessions.filter(session => 
               session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
               session.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
@@ -762,7 +762,7 @@ function AiLlmPage() {
               </div>
             </div>
           </div>
-          <div className="flex-grow p-6 overflow-y-auto bg-gray-50">
+          <div className="flex-grow p-4 sm:p-6 overflow-y-auto bg-gray-50">
             {messages.length > 0 ? (
               <div className="space-y-6">
                 {messages.map((msg) => (
@@ -770,7 +770,7 @@ function AiLlmPage() {
                     <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${msg.sender === 'user' ? 'bg-[#3B86F6] text-white' : 'bg-gray-200 text-gray-700'}`}>
                       {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
                     </div>
-                    <div className={`max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
+                    <div className={`max-w-[85%] sm:max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
                       {msg.isThinking ? (
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-gray-600">{thinkingMessages[currentThinkingMessage]}</span>
@@ -807,7 +807,7 @@ function AiLlmPage() {
               </div>
             )}
           </div>
-          <div className="p-4 border-t border-gray-200/80 bg-white">
+          <div className="p-3 sm:p-4 border-t border-gray-200/80 bg-white">
             <form onSubmit={handleSend} className="relative flex items-center">
               <textarea
                 value={input}

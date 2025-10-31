@@ -90,7 +90,7 @@ function RpaPage() {
     );
 
   return (
-    <div className="bg-gray-50/50 min-h-screen p-8">
+    <div className="bg-gray-50/50 min-h-screen p-4 sm:p-6 lg:p-8">
       <PageHeader title="RPA Analyst" />
 
       <div className="flex justify-between items-center mb-6">

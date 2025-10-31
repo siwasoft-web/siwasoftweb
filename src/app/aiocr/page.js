@@ -299,13 +299,13 @@ function AiOcrPage() {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-screen p-8">
+    <div className="bg-gray-50/50 min-h-screen p-4 sm:p-6 lg:p-8">
       <PageHeader title="AI OCR" />
 
       <div className="max-w-7xl mx-auto">
-        <div className="flex gap-6 h-[calc(100vh-160px)]">
+        <div className="flex flex-col lg:flex-row gap-6 min-h-[calc(100dvh-160px)]">
           {/* 왼쪽 사이드바 - 작업 목록 */}
-          <div className="w-80 bg-white rounded-lg shadow-md border border-gray-200 flex flex-col">
+          <div className="w-full lg:w-80 bg-white rounded-lg shadow-md border border-gray-200 flex flex-col">
             {/* 상단 헤더 */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between mb-4">
@@ -347,7 +347,7 @@ function AiOcrPage() {
             </div>
 
             {/* 작업 목록 */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto max-h-72 lg:max-h-none">
               {ocrHistory.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -418,7 +418,7 @@ function AiOcrPage() {
 
           {/* 오른쪽 메인 영역 - OCR 기능 */}
           <div className="flex-1 bg-white rounded-lg shadow-md border border-gray-200 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="max-w-4xl mx-auto">
                 {/* 툴 선택 버튼 */}
                 <div className="mb-6 flex justify-between items-center">
@@ -500,7 +500,7 @@ function AiOcrPage() {
                 {/* 파일 업로드 영역 */}
                 <div 
                   {...getRootProps()} 
-                  className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-colors duration-300 cursor-pointer mb-6
+                  className={`relative border-2 border-dashed rounded-xl p-8 sm:p-12 text-center transition-colors duration-300 cursor-pointer mb-6
                     ${isDragActive ? 'border-[#3B86F6] bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'}`}
                 >
                   <input {...getInputProps()} />

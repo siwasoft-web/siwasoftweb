@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 
 function Setting() {
   const { data: session } = useSession();
+  const [role, setRole] = useState("user");
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'embedding' | 'documents' | 'admin'
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -557,6 +558,22 @@ function Setting() {
   useEffect(() => {
     loadGitEmbeddings(selectedGitCollectionId);
   }, [selectedGitCollectionId]);
+
+  // admin계정 판단용
+  useEffect(() => {
+    if (!session?.user?.email) return;
+
+    fetch("/api/user-role")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setRole(data.role || "user");
+      })
+      .catch((err) => {
+        console.error("Error fetching role:", err);
+        setRole("user");
+      })
+      .finally();
+  }, [session]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -1430,12 +1447,16 @@ function Setting() {
             >
               Documents
             </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`${styles.tabButton} ${activeTab==='admin' ? styles.tabButtonActive : ''}`}
-            >
-              Admin
-            </button>
+            {role === 'admin' && (
+              <button
+                onClick={() => setActiveTab('admin')}
+                className={`${styles.tabButton} ${
+                  activeTab === 'admin' ? styles.tabButtonActive : ''
+                }`}
+              >
+                Admin
+              </button>
+            )}
           </div>
         </div>
 
@@ -2012,7 +2033,7 @@ function Setting() {
             </div>
           )}
 
-            {activeTab === 'admin' && (
+            {activeTab === 'admin' && role === 'admin' && (
               <div>
                 {/* 제목 - 조건부 렌더링 */}
                 {!selectedSiteId ? (
@@ -2412,7 +2433,7 @@ function Setting() {
                           className={`flex items-center gap-2 hover:text-blue-600 transition-colors group ${styles.pageTitle}`}
                         >
                           <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
-                          <span>프로젝트 {selectedProjectId}</span>
+                          <span>RPA 프로세스 목록</span>
                         </button>
                         <div className="flex items-center gap-2">
                           <input

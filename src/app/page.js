@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
-import { Layers, MessageSquare, ScanText, User, HelpCircle, Clock, ChevronRight } from 'lucide-react';
+import { Layers, MessageSquare, ScanText, User, HelpCircle, Clock, ChevronRight, Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import withAuth from '@/components/withAuth';
 import { useSession } from 'next-auth/react';
@@ -10,10 +10,31 @@ import Link from 'next/link';
 
 function Home() {
   const { data: session } = useSession();
+  const [projects, setProjects] = useState([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [chatSessions, setChatSessions] = useState([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [ocrHistory, setOcrHistory] = useState([]);
   const [isLoadingOcrHistory, setIsLoadingOcrHistory] = useState(true);
+
+  // RPA 프로젝트 목록 가져오기
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setIsLoadingProjects(true);
+        const res = await fetch('/api/rpa/projects-by-user');
+        if (!res.ok) throw new Error(`서버 오류: ${res.status}`);
+        const data = await res.json();
+        setProjects(Array.isArray(data.data) ? data.data : []);
+      } catch (err) {
+        console.error('프로젝트 목록 불러오기 오류:', err);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+
+    if (session?.user?.email) fetchProjects();
+  }, [session]);
 
   // 대화방 목록 가져오기
   useEffect(() => {
@@ -83,42 +104,74 @@ function Home() {
       <PageHeader title="HOME" />
 
       <main>
+        {/* ✅ RPA 프로젝트 미리보기 섹션 */}
         <section className="mb-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-l-4 border-[#3B86F6]">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500">2030</p>
-                  <h3 className="text-xl font-semibold text-gray-800 mt-1">프로젝트 A</h3>
-                </div>
-                <Layers className="text-gray-400" />
-              </div>
-              <p className="text-gray-600 mt-4">기업 정보를 확인하신 후, 다음 단계로 넘어 가주세요.</p>
-              <a href="#" className="text-blue-600 font-medium mt-6 inline-block">자세히 보기 →</a>
-            </Card>
-            <Card className="border-l-4 border-[#3B86F6]">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500">2030</p>
-                  <h3 className="text-xl font-semibold text-gray-800 mt-1">프로젝트 A</h3>
-                </div>
-                <Layers className="text-gray-400" />
-              </div>
-              <p className="text-gray-600 mt-4">기업 정보를 확인하신 후, 다음 단계로 넘어 가주세요.</p>
-              <a href="#" className="text-blue-600 font-medium mt-6 inline-block">자세히 보기 →</a>
-            </Card>
-            <Card className="border-l-4 border-[#3B86F6]">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500">2030</p>
-                  <h3 className="text-xl font-semibold text-gray-800 mt-1">프로젝트 A</h3>
-                </div>
-                <Layers className="text-gray-400" />
-              </div>
-              <p className="text-gray-600 mt-4">기업 정보를 확인하신 후, 다음 단계로 넘어 가주세요.</p>
-              <a href="#" className="text-blue-600 font-medium mt-6 inline-block">자세히 보기 →</a>
-            </Card>
+          {isLoadingProjects ? (
+            <div className="text-gray-500 text-sm">프로젝트 목록을 불러오는 중...</div>
+          ) : projects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[30vh] bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
+            <div className="bg-blue-100 p-4 rounded-full mb-4 flex items-center justify-center">
+              <Layers className="text-blue-600 w-10 h-10" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">RPA 프로젝트를 시작해보세요</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              아직 등록된 프로젝트가 없습니다.<br />
+              시와소프트에 문의 부탁드립니다.
+            </p>
+            {/* <Link
+              href="/rpa/create" // 프로젝트 생성 페이지 또는 관리자 링크
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              프로젝트 생성하기 →
+            </Link> */}
           </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {projects.slice(0, 3).map((project) => (
+                <Card
+                  key={project.PROJECT_CODE}
+                  className="border-l-4 border-[#3B86F6] hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        {project.updated_date || '---'}
+                      </p>
+                      <h3 className="text-xl font-semibold text-gray-800 mt-1">
+                        {project.PROJECT_TITLE || '이름 없음'}
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {project.SITE_NAME || 'SITE 정보 없음'}
+                      </p>
+                    </div>
+                    <Layers className="text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 mt-4">
+                    {project.description || '업무 관련 자동화 프로젝트입니다.'}
+                  </p>
+                  <Link
+                    href={`/rpa/${project.PROJECT_CODE}`}
+                    className="text-blue-600 font-medium mt-6 inline-block"
+                  >
+                    자세히 보기 →
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* ✅ 전체 보기 링크 */}
+          {projects.length > 0 && (
+            <div className="mt-6 text-center">
+              <Link
+                href="/rpa"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-md hover:bg-blue-100"
+              >
+                전체 프로젝트 보기 →
+              </Link>
+            </div>
+          )}
         </section>
 
         <section className="mb-10">

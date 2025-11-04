@@ -1421,6 +1421,33 @@ function Setting() {
     }
   };
 
+  // RPA로그 사용 미사용 지정
+  const handleToggleIsUse = async (log) => {
+    try {
+      const newValue = !(
+        log.is_use === true || log.is_use === "true"
+      ); // 현재 상태 반전
+
+      const res = await fetch(`/api/rpa/rpa_log/update_is_use/${log.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_use: newValue }),
+      });
+
+      if (!res.ok) throw new Error("is_use 변경 실패");
+      const result = await res.json();
+
+      // ✅ UI 즉시 갱신
+      setRpaLogs((prev) =>
+        prev.map((t) =>
+          t.id === log.id ? { ...t, is_use: newValue } : t
+        )
+      );
+    } catch (err) {
+      alert(`상태 변경 실패: ${err.message}`);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <PageHeader title="Setting" />
@@ -2409,7 +2436,7 @@ function Setting() {
                           }
                           handleCreateProject(selectedSiteId, '', []);
                         }}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors duration-200"
+                        className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
                       >
                         + 자동화 생성
                       </button>
@@ -2419,14 +2446,15 @@ function Setting() {
 
                 {/* 프로젝트 상세 - 자동화 작업 목록 */}
                 {selectedProjectId && (() => {
-                  const filteredTasks = (rpaLogs || []).filter(log =>
+                  const filteredTasks = (rpaLogs || []).filter((log) =>
                     log.TITLE?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
                     log.status_name?.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
-                    log.updated_date?.toLowerCase().includes(taskSearchTerm.toLowerCase())
+                    log.updated_at?.toLowerCase?.().includes(taskSearchTerm.toLowerCase?.()) // 안전하게
                   );
-                  
+
                   return (
                     <div>
+                      {/* 상단 영역 */}
                       <div className="flex items-center justify-between mb-2 max-w-4xl">
                         <button
                           onClick={() => setSelectedProjectId(null)}
@@ -2435,6 +2463,7 @@ function Setting() {
                           <span className="text-blue-600 group-hover:translate-x-[-4px] transition-transform">←</span>
                           <span>RPA 프로세스 목록</span>
                         </button>
+
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
@@ -2452,98 +2481,108 @@ function Setting() {
                         </div>
                       </div>
 
+                      {/* 테이블 */}
                       <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
                         <div className="overflow-x-auto">
                           <table className="w-full">
                             <thead>
                               <tr className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 shadow-sm">
                                 <th className="px-6 py-5 text-left text-sm font-extrabold text-blue-900 uppercase tracking-widest">
-                                  <div className="flex items-center gap-2">
-                                    자동화
-                                  </div>
+                                  <div className="flex items-center gap-2">자동화</div>
                                 </th>
                                 <th className="px-6 py-5 text-left text-sm font-extrabold text-indigo-900 uppercase tracking-widest">
-                                  <div className="flex items-center gap-2">
-                                    스테이터스
-                                  </div>
+                                  <div className="flex items-center gap-2">스테이터스</div>
                                 </th>
                                 <th className="px-6 py-5 text-left text-sm font-extrabold text-emerald-900 uppercase tracking-widest">
-                                  <div className="flex items-center gap-2">
-                                    업데이트
-                                  </div>
+                                  <div className="flex items-center gap-2">업데이트</div>
                                 </th>
                                 <th className="px-6 py-5 text-center text-sm font-extrabold text-purple-900 uppercase tracking-widest">
-                                  <div className="flex items-center justify-center gap-2">
-                                    기능
-                                  </div>
+                                  <div className="flex items-center justify-center gap-2">기능</div>
                                 </th>
                               </tr>
                             </thead>
+
                             <tbody className="bg-white divide-y divide-gray-100">
-                              {filteredTasks.map((task) => (
-                                <tr key={task.id} className="hover:bg-gray-50 transition-colors duration-200 group">
-                                  <td className="px-4 py-3 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-800">{task.TITLE}</div>
-                                  </td>
+                              {filteredTasks.map((log) => {
+                                const isActive = log.is_use === true || log.is_use === "true";
+                                const usageText = isActive ? "사용중" : "미사용";
+                                const usageClass = isActive
+                                  ? "text-green-700 bg-green-50"
+                                  : "text-gray-600 bg-gray-100";
 
-                                  <td className="px-4 py-3 whitespace-nowrap">
-                                    <span
-                                      className={`inline-block text-sm px-2 py-1 rounded-md ${
-                                        task.status_name === '오류'
-                                          ? 'text-red-600 bg-red-50'
-                                          : task.status_name === '완료'
-                                          ? 'text-green-600 bg-green-50'
-                                          : task.status_name === '실행중'
-                                          ? 'text-blue-600 bg-blue-50'
-                                          : 'text-gray-600 bg-gray-100'
-                                      }`}
-                                    >
-                                      {task.status_name || '대기중'}
-                                    </span>
-                                  </td>
+                                const statusClass =
+                                  log.status_name === "오류"
+                                    ? "text-red-600 bg-red-50"
+                                    : log.status_name === "완료"
+                                    ? "text-green-600 bg-green-50"
+                                    : log.status_name === "실행중"
+                                    ? "text-blue-600 bg-blue-50"
+                                    : "text-gray-600 bg-gray-100";
 
-                                  <td className="px-4 py-3 whitespace-nowrap">
-                                    <span className="text-sm text-gray-600">
-                                      {task.updated_at ? new Date(task.updated_at).toLocaleString('ko-KR') : '---'}
-                                    </span>
-                                  </td>
+                                return (
+                                  <tr
+                                    key={log.id || `${log.PROJECT_CODE}-${log.TITLE}`}
+                                    className="hover:bg-gray-50 transition-colors duration-200 group"
+                                  >
+                                    {/* 자동화 이름 */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <div className="text-sm font-medium text-gray-800">
+                                        {log.TITLE}
+                                      </div>
+                                    </td>
 
-                                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                                    <div className="flex items-center justify-center gap-2">
+                                    {/* 스테이터스 */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
                                       <span
-                                        className={`text-xs px-2 py-1 rounded ${
-                                          task.usage === '사용중'
-                                            ? 'text-green-700 bg-green-50'
-                                            : 'text-gray-600 bg-gray-100'
-                                        }`}
+                                        className={`inline-block text-sm px-2 py-1 rounded-md ${statusClass}`}
                                       >
-                                        {task.usage || '미사용'}
+                                        {log.status_name || "대기중"}
                                       </span>
-                                      <button
-                                        onClick={() => handleDeleteTask(task.id)}
-                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
-                                      >
-                                        삭제
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
+                                    </td>
+
+                                    {/* 업데이트 */}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span className="text-sm text-gray-600">
+                                        {log.updated_at
+                                          ? new Date(log.updated_at).toLocaleString("ko-KR")
+                                          : "---"}
+                                      </span>
+                                    </td>
+
+                                    {/* 기능 */}
+                                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <button
+                                          onClick={() => handleToggleIsUse(log)}
+                                          className={`text-xs px-2 py-1 rounded-md transition-colors ${usageClass}`}
+                                        >
+                                          {usageText}
+                                        </button>
+                                        {/* <button
+                                          onClick={() => handleDeleteTask(log.id)}
+                                          className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                        >
+                                          삭제
+                                        </button> */}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
                       </div>
-                      
+
                       {/* 자동화 작업 개수 표시 */}
                       <div className="mt-4 max-w-4xl">
                         <p className="text-xs text-gray-400">
-                          총 {rpaLogs.length || 0}건 표시 중 (원본 {rpaLogs.length || 0}건)
+                          총 {filteredTasks.length || 0}건 표시 중 (원본 {rpaLogs?.length || 0}건)
                         </p>
                       </div>
                     </div>
                   );
                 })()}
-
                   <hr className="my-6 border-0 h-px bg-gray-200" />
               </div>
             )}

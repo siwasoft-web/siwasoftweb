@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       const db = (await connectDB).db(DBName);
       const userCollection = db.collection('user');
 
-      // 🔍 이메일 기준으로 role 조회
+      // 이메일 기준으로 role 조회
       const user = await userCollection.findOne({ email: userEmail });
 
       if (!user) {

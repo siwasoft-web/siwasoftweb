@@ -6,7 +6,7 @@ import { CheckCircle, AlertCircle, Circle, ArrowLeft, Layers } from 'lucide-reac
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
-const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
+// const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
 
 // 상태 스타일 정의
 const statusStylesByName = {
@@ -64,7 +64,7 @@ export default function ProjectDashboardPage() {
   // 프로젝트 이름 가져오기
   const fetchProjectName = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/project/list`, {
+      const res = await fetch(`/api/rpa/projects/list`, {
         headers: {
           'Content-Type': 'application/json',
           'x-user-id': session?.user?.email || '',
@@ -81,7 +81,7 @@ export default function ProjectDashboardPage() {
   // RPA 로그 불러오기
   const fetchRpaLogs = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/rpa/rpa_log/list/${projectId}`);
+      const res = await fetch(`/api/rpa/rpa_log/list/${projectId}`);
       const data = await res.json();
       const logs = Array.isArray(data) ? data : data.data || [];
 

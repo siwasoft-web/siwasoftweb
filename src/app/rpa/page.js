@@ -141,7 +141,7 @@ function RpaPage() {
           <div className="flex flex-col justify-center items-center min-h-[40vh] text-gray-400">
             <Layers size={48} className="mb-3 opacity-40" />
             <p className="text-lg font-medium">표시할 프로젝트가 없습니다.</p>
-            <p className="text-sm text-gray-400 mt-1">관리자(Admin) 페이지에서 프로젝트를 생성하세요.</p>
+            <p className="text-sm text-gray-400 mt-1">시와소프트에 문의해 주세요.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
@@ -168,7 +168,7 @@ function RpaPage() {
                       {project.PROJECT_TITLE || '이름 없음'}
                     </h3>
                     <p className="text-xs text-gray-400 mt-1">
-                      {project.SITE_NAME || 'SITE 정보 없음'}
+                      {project.SITE_NAME || '업무 관련 자동화 프로젝트입니다.'}
                     </p>
                   </div>
                 </Link>

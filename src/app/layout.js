@@ -9,6 +9,24 @@ import { loadSlim } from "tsparticles-slim";
 import Providers from "@/components/Providers";
 import { usePathname } from 'next/navigation';
 
+function LayoutWithSidebar({ children }) {
+  const { isOpen } = useSidebar();
+
+  return (
+    <div className="flex relative z-10">
+      <Sidebar />
+      <main
+        className={`flex-grow transition-all duration-300`}
+        style={{
+          marginLeft: isOpen ? '16rem' : '5rem', // Tailwind w-64(256px), w-20(80px)과 동일
+        }}
+      >
+        {children}
+      </main>
+    </div>
+  );
+}
+
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith('/auth');

@@ -1048,7 +1048,6 @@ function Setting() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": userEmail,  // ✅ 추가
         },
         body: JSON.stringify({
           code: parseInt(newSiteCode),
@@ -1176,7 +1175,7 @@ function Setting() {
 
       const projectCode = targetProject.PROJECT_CODE;
 
-      // ✅ 입력값 우선, 기존값은 fallback
+      // 입력값 우선, 기존값은 fallback
       const newTitle =
         ((typeof editValues?.PROJECT_TITLE === "string"
           ? editValues.PROJECT_TITLE.trim()
@@ -1184,16 +1183,18 @@ function Setting() {
 
       const newUsers = (() => {
         const src = editValues?.USER_INFO;
+        let arr = [];
+
         if (Array.isArray(src)) {
-          // 이미 배열이면 그대로 사용
-          return src.map(v => String(v).trim()).filter(Boolean);
+          arr = src.map(v => String(v).trim()).filter(Boolean);
+        } else if (typeof src === "string") {
+          arr = src.split(",").map(v => v.trim()).filter(Boolean);
+        } else if (Array.isArray(targetProject.USER_INFO)) {
+          arr = targetProject.USER_INFO;
         }
-        if (typeof src === "string") {
-          // "a, b, c" → ["a","b","c"]
-          return src.split(",").map(v => v.trim()).filter(Boolean);
-        }
-        // 편집 값 없으면 기존 값 유지
-        return Array.isArray(targetProject.USER_INFO) ? targetProject.USER_INFO : [];
+
+        // 중복 제거 추가, 프론트에서만 처리함.
+        return [...new Set(arr.map(v => v.toLowerCase()))];
       })();
 
       const payload = {
@@ -1243,17 +1244,13 @@ function Setting() {
       setSelectedSiteId(siteCode);
       setLoadingProjects(true);
 
-      const userEmail = session?.user?.email;
       if (!userEmail) {
         throw new Error("로그인 정보가 없습니다. 세션 만료일 수 있습니다.");
       }
 
-      console.log("🔍 userEmail:", userEmail);
-      console.log("🔍 fetch URL:", `/api/rpa/projects/list`);
       const res = await fetch(`/api/rpa/projects/list`, {
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": userEmail,
         },
       });
 
@@ -1284,7 +1281,7 @@ function Setting() {
   };
 
   // 프로젝트 삭제
-  const handleDeleteProject = async (projectCode) => {
+  const handleDeleteProject = async (projectCode, siteCode) => {
     if (!confirm(`프로젝트 코드 ${projectCode}를 삭제하시겠습니까?`)) return;
 
     try {
@@ -1296,7 +1293,9 @@ function Setting() {
       if (!res.ok) throw new Error(data.detail || '삭제 실패');
 
       alert(`🗑️ 삭제 완료: ${data.PROJECT_TITLE || projectCode}`);
-      fetchProjects();
+      if (typeof handleViewSiteDetails === 'function') {
+        await handleViewSiteDetails(siteCode);
+      }
     } catch (err) {
       console.error('프로젝트 삭제 오류:', err);
       alert(`❌ 삭제 실패: ${err.message}`);
@@ -1310,7 +1309,9 @@ function Setting() {
       top: rect.top,
       left: rect.right + 10  // 텍스트 우측으로 10px 떨어진 위치
     });
-    setSelectedProjectUsers(users);
+    const formattedUsers = users.map((email) => ({ email }));
+
+    setSelectedProjectUsers(formattedUsers);
     setShowUsersModal(true);
   };
 
@@ -1381,7 +1382,6 @@ function Setting() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': session?.user?.email || '',
         },
         body: JSON.stringify(payload),
       });
@@ -2251,7 +2251,7 @@ function Setting() {
                   <div>
                     <div className="overflow-hidden rounded-2xl bg-gray-50 shadow-lg border border-gray-200 max-w-4xl">
                       <div className="overflow-x-auto">
-                        <table className="w-full table-fixed">
+                        <table className="w-full">
                           <colgroup>
                             <col style={{width: '15%'}} />
                             <col style={{width: '13%'}} />
@@ -2403,12 +2403,20 @@ function Setting() {
                                       </button>
                                     </div>
                                   ) : (
-                                    <button
-                                      onClick={() => handleEditProject(project)}
-                                      className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md"
-                                    >
-                                      수정
-                                    </button>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        onClick={() => handleEditProject(project)}
+                                        className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        수정
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteProject(project.PROJECT_CODE, project.SITE_CODE)}
+                                        className="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-300 transition-colors duration-200 shadow-sm hover:shadow-md"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
                                   )}
                                 </td>
                               </tr>
@@ -2434,7 +2442,8 @@ function Setting() {
                             alert('먼저 사이트를 선택해주세요.');
                             return;
                           }
-                          handleCreateProject(selectedSiteId, '', []);
+                          // handleCreateProject(selectedSiteId, '', []);
+                          setShowProjectModal(true);
                         }}
                         className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors duration-200 shadow-md hover:shadow-lg"
                       >
@@ -2716,8 +2725,8 @@ function Setting() {
         </div>
       )}
 
-      {/* 프로젝트 생성 모달, 수정으로 대체 */}
-      {/* {showProjectModal && (
+      {/* 프로젝트 생성 모달 */}
+      {showProjectModal && (
         <div 
           className="fixed inset-0 flex items-center justify-center"
           style={{ 
@@ -2734,43 +2743,27 @@ function Setting() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_CODE</label>
-                <input
-                  type="text"
-                  value={newProjectCode}
-                  onChange={(e) => setNewProjectCode(e.target.value)}
-                  placeholder=""
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_ID</label>
-                <input
-                  type="text"
-                  placeholder=""
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SITE_NAME</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  프로젝트 제목
+                </label>
                 <input
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder=""
+                  placeholder="예: 물류 자동화 RPA"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">USER_INFO (쉼표 구분)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  사용자 이메일 (쉼표 구분)
+                </label>
                 <input
                   type="text"
                   value={newProjectUsers}
                   onChange={(e) => setNewProjectUsers(e.target.value)}
-                  placeholder="예: user1, user2"
+                  placeholder="예: admin@siwasoft.co.kr, user@sample.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -2785,10 +2778,25 @@ function Setting() {
               </button>
               <button
                 onClick={() => {
-                  // 프로젝트 추가 로직 (나중에 구현)
+                  // 쉼표 기준으로 분리하고 공백 제거 + 중복 제거
+                  const users = [...new Set(
+                    newProjectUsers
+                      .split(',')
+                      .map(u => u.trim().toLowerCase())
+                      .filter(Boolean)
+                  )];
+
+                  if (!newProjectName.trim()) {
+                    alert('프로젝트 제목을 입력해주세요.');
+                    return;
+                  }
+
+                  // ✅ 실제 입력값으로 handleCreateProject 호출
+                  handleCreateProject(selectedSiteId, newProjectName.trim(), users);
+
+                  // ✅ 모달 닫기 및 입력 초기화
                   setShowProjectModal(false);
                   setNewProjectName('');
-                  setNewProjectCode('');
                   setNewProjectUsers('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"
@@ -2798,7 +2806,7 @@ function Setting() {
             </div>
           </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 }

@@ -1,0 +1,79 @@
+/* page.module.css */
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .inputGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .input {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  .button {
+    padding: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    background-color: #0070f3; /* 기본 하늘색 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+  }
+  
+  .button:disabled {
+    background-color: grey; /* 검색 중일 때 회색 */
+    cursor: not-allowed;
+  }
+  
+  .results {
+    margin-top: 2rem;
+  }
+  
+  .pre {
+    background-color: #f0f0f0;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  .error {
+    color: red;
+    margin-top: 1rem;
+  }
+  
+  /* 라디오 버튼 그룹 스타일 추가 */
+  .radioGroup {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .radioGroup label {
+    display: flex;
+    align-items: center;
+  }
+  
+  .radioGroup input[type="radio"] {
+    margin-right: 0.5rem;
+  }
+  
+  .resultItem {
+    background-color: #f9f9f9;
+    padding: 16px;
+    border-radius: 8px;
+  }
+  
+  .resultItem p {
+    margin: 8px 0;
+  }
+  
+  .resultItem p strong {
+    width: 200px;
+    display: inline-block;
+  }
+  

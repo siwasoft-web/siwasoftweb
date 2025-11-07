@@ -106,6 +106,17 @@ function Home() {
       <main>
         {/* ✅ RPA 프로젝트 미리보기 섹션 */}
         <section className="mb-10">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">RPA 프로젝트</h2>
+            {projects.length > 0 && (
+              <Link
+                href="/rpa"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-md hover:bg-blue-100"
+              >
+                전체 프로젝트 보기 →
+              </Link>
+            )}
+          </div>
           {isLoadingProjects ? (
             <div className="text-gray-500 text-sm">프로젝트 목록을 불러오는 중...</div>
           ) : projects.length === 0 ? (
@@ -128,7 +139,7 @@ function Home() {
           </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {projects.slice(0, 3).map((project) => (
+              {projects.map((project) => (
                 <Card
                   key={project.PROJECT_CODE}
                   className="border-l-4 border-[#3B86F6] hover:shadow-lg transition-shadow"
@@ -141,9 +152,9 @@ function Home() {
                       <h3 className="text-xl font-semibold text-gray-800 mt-1">
                         {project.PROJECT_TITLE || '이름 없음'}
                       </h3>
-                      <p className="text-xs text-gray-400 mt-1">
+                      {/* <p className="text-xs text-gray-400 mt-1">
                         {project.SITE_NAME || 'SITE 정보 없음'}
-                      </p>
+                      </p> */}
                     </div>
                     <Layers className="text-gray-400" />
                   </div>
@@ -162,7 +173,7 @@ function Home() {
           )}
 
           {/* ✅ 전체 보기 링크 */}
-          {projects.length > 0 && (
+          {/* {projects.length > 0 && (
             <div className="mt-6 text-center">
               <Link
                 href="/rpa"
@@ -171,7 +182,7 @@ function Home() {
                 전체 프로젝트 보기 →
               </Link>
             </div>
-          )}
+          )} */}
         </section>
 
         <section className="mb-10">

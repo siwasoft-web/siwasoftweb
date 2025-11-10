@@ -29,6 +29,13 @@ function AiLlmPage() {
   const [editingTitle, setEditingTitle] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // 이미지 업로드 관련 상태
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isExtractingImage, setIsExtractingImage] = useState(false);
+  const [extractedImageText, setExtractedImageText] = useState('');
+  const fileInputRef = useRef(null);
 
   // 동적 "생각 중입니다" 메시지들
   const thinkingMessages = [
@@ -311,9 +318,73 @@ function AiLlmPage() {
     return title;
   };
 
+  // 이미지 선택 핸들러
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 이미지 파일인지 확인
+    if (!file.type.startsWith('image/')) {
+      alert('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    // 파일 크기 확인 (10MB 제한)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('이미지 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+
+    setSelectedImage(file);
+    
+    // 미리보기 생성
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 이미지 제거 핸들러
+  const handleImageRemove = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setExtractedImageText('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // 이미지에서 텍스트 추출 (Google Vision API)
+  const extractTextFromImage = async (imageBase64) => {
+    try {
+      setIsExtractingImage(true);
+      const response = await fetch('/api/vision-extract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageBase64 })
+      });
+
+      if (!response.ok) {
+        throw new Error('이미지 텍스트 추출 실패');
+      }
+
+      const data = await response.json();
+      return data.extractedText || '';
+    } catch (error) {
+      console.error('Image extraction error:', error);
+      alert('이미지에서 텍스트를 추출하는데 실패했습니다: ' + error.message);
+      return '';
+    } finally {
+      setIsExtractingImage(false);
+    }
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
-    if (input.trim() === '' || isLoading) return;
+    if ((input.trim() === '' && !selectedImage) || isLoading) return;
 
     let sessionId = currentSessionId;
     
@@ -326,9 +397,25 @@ function AiLlmPage() {
       }
     }
 
+    // 이미지가 있으면 텍스트 추출
+    let extractedText = '';
+    if (selectedImage && imagePreview) {
+      extractedText = await extractTextFromImage(imagePreview);
+      setExtractedImageText(extractedText);
+      // 추출 실패 시에도 사용자 입력 텍스트로 검색 가능하도록 함
+    }
+
+    // 검색 쿼리 구성: 이미지에서 추출된 텍스트 + 사용자 입력 텍스트
+    const searchQuery = [extractedText, input.trim()].filter(Boolean).join(' ').trim();
+
+    if (!searchQuery) {
+      alert('텍스트를 입력하거나 이미지를 업로드해주세요.');
+      return;
+    }
+
     // 첫 메시지 전, 세션 제목을 즉시 업데이트 (ChatGPT 스타일)
-    if (!hasStarted && input.trim()) {
-      const newTitle = generateAutoTitle(input);
+    if (!hasStarted && searchQuery) {
+      const newTitle = generateAutoTitle(searchQuery);
       setChatSessions((prev) => prev.map((s) => (s._id === sessionId ? { ...s, title: newTitle } : s)));
       updateSessionTitle(sessionId, newTitle);
     }
@@ -345,19 +432,28 @@ function AiLlmPage() {
       await saveMessageToSession(welcomeMessage, sessionId);
     }
 
+    // 사용자 메시지 구성 (이미지가 있으면 이미지 정보 포함)
+    const userMessageText = selectedImage 
+      ? (extractedText ? `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim() : input.trim() || '[이미지 업로드됨]')
+      : input;
+
     const userMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: input,
+      text: userMessageText,
+      image: selectedImage ? imagePreview : null,
     };
     
     setMessages(prev => [...prev, userMessage]);
     await saveMessageToSession(userMessage, sessionId);
     
-    const currentInput = input;
+    const currentInput = searchQuery;
     setInput('');
     setIsLoading(true);
     setResponseTime(null);
+    
+    // 이미지 초기화
+    handleImageRemove();
 
     // 동적 메시지 애니메이션 시작
     startThinkingAnimation();
@@ -781,7 +877,18 @@ function AiLlmPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        <>
+                          {msg.image && (
+                            <div className="mb-2 rounded-lg overflow-hidden">
+                              <img 
+                                src={msg.image} 
+                                alt="Uploaded" 
+                                className="max-w-full h-auto max-h-48 object-contain rounded"
+                              />
+                            </div>
+                          )}
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        </>
                       )}
                       {msg.responseTime && (
                         <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
@@ -808,36 +915,80 @@ function AiLlmPage() {
             )}
           </div>
           <div className="p-3 sm:p-4 border-t border-gray-200/80 bg-white">
+            {/* 이미지 미리보기 (탄소배출량 모드일 때만) */}
+            {selectedTool === 'chatbot' && imagePreview && (
+              <div className="mb-3 relative inline-block">
+                <div className="relative">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="max-w-xs h-auto max-h-32 object-contain rounded-lg border border-gray-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImageRemove}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+                {isExtractingImage && (
+                  <div className="mt-2 text-xs text-gray-500">이미지에서 텍스트 추출 중...</div>
+                )}
+                {extractedImageText && (
+                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    추출된 정보: {extractedImageText.substring(0, 100)}{extractedImageText.length > 100 ? '...' : ''}
+                  </div>
+                )}
+              </div>
+            )}
             <form onSubmit={handleSend} className="relative flex items-center">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isLoading ? "AI is thinking..." : "Type your message here..."}
+                placeholder={isLoading ? "AI is thinking..." : selectedTool === 'chatbot' ? "이미지를 업로드하거나 메시지를 입력하세요..." : "Type your message here..."}
                 className="w-full resize-none border border-gray-300 rounded-lg py-3 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-[#3B86F6] text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 rows={1}
-                disabled={isLoading}
+                disabled={isLoading || isExtractingImage}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                  if (e.key === 'Enter' && !e.shiftKey && !isLoading && !isExtractingImage) {
                     handleSend(e);
                   }
                 }}
               />
               <div className="absolute left-3 flex items-center">
-                 <button type="button" className="text-gray-400 hover:text-[#3B86F6] p-2 cursor-pointer">
-                  <Paperclip size={20} />
-                </button>
+                {selectedTool === 'chatbot' && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      id="image-upload"
+                      disabled={isLoading || isExtractingImage}
+                    />
+                    <label 
+                      htmlFor="image-upload"
+                      className={`text-gray-400 hover:text-[#3B86F6] p-2 cursor-pointer ${isLoading || isExtractingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title="이미지 업로드"
+                    >
+                      <Paperclip size={20} />
+                    </label>
+                  </>
+                )}
               </div>
               <div className="absolute right-3 flex items-center">
                 <button 
                   type="submit" 
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && !selectedImage) || isLoading || isExtractingImage}
                   className={`p-2 rounded-full transition-colors ${
-                    input.trim() && !isLoading 
+                    (input.trim() || selectedImage) && !isLoading && !isExtractingImage
                       ? 'bg-[#3B86F6] text-white hover:bg-blue-600 cursor-pointer' 
                       : 'text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  {isLoading ? (
+                  {isLoading || isExtractingImage ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   ) : (
                     <SendHorizontal size={20} />

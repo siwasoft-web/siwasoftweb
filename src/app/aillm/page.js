@@ -35,6 +35,7 @@ function AiLlmPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [isExtractingImage, setIsExtractingImage] = useState(false);
   const [extractedImageText, setExtractedImageText] = useState('');
+  const [extractedImageData, setExtractedImageData] = useState(null); // 구조화된 데이터
   const fileInputRef = useRef(null);
 
   // 동적 "생각 중입니다" 메시지들
@@ -350,6 +351,7 @@ function AiLlmPage() {
     setSelectedImage(null);
     setImagePreview(null);
     setExtractedImageText('');
+    setExtractedImageData(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -372,11 +374,21 @@ function AiLlmPage() {
       }
 
       const data = await response.json();
-      return data.extractedText || '';
+      console.log('Vision API 응답:', data); // 디버깅용
+      // 구조화된 데이터 저장
+      setExtractedImageData(data.formatted || null);
+      // 구조화된 데이터와 텍스트 모두 반환
+      return {
+        extractedText: data.extractedText || '',
+        formatted: data.formatted || null
+      };
     } catch (error) {
       console.error('Image extraction error:', error);
       alert('이미지에서 텍스트를 추출하는데 실패했습니다: ' + error.message);
-      return '';
+      return {
+        extractedText: '',
+        formatted: null
+      };
     } finally {
       setIsExtractingImage(false);
     }
@@ -399,17 +411,30 @@ function AiLlmPage() {
 
     // 이미지가 있으면 텍스트 추출
     let extractedText = '';
+    let extractedData = null;
     if (selectedImage && imagePreview) {
-      extractedText = await extractTextFromImage(imagePreview);
+      const extractionResult = await extractTextFromImage(imagePreview);
+      // extractedText: 검색에 사용될 텍스트 (예: "Coca-Cola 코카콜라 350 ml")
+      // - Vision API에서 제조사, 제품명, 사이즈만 추출하여 공백으로 조합한 것
+      // - "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
+      extractedText = extractionResult.extractedText || '';
+      // extractedData: 화면 표시용 구조화된 데이터 (제품명, 제조사, 사이즈를 분리)
+      extractedData = extractionResult.formatted || null;
       setExtractedImageText(extractedText);
+      setExtractedImageData(extractedData);
       // 추출 실패 시에도 사용자 입력 텍스트로 검색 가능하도록 함
     }
 
-    // 검색 쿼리 구성: 이미지에서 추출된 텍스트 + 사용자 입력 텍스트
+    // ===== 실제 검색 쿼리 구성 =====
+    // 검색에 사용되는 텍스트: 이미지에서 추출된 텍스트 + 사용자가 입력한 텍스트
+    // 예: "Coca-Cola 코카콜라 350 ml" + "탄소배출량은?"
+    // 또는: "Food" (이미지에서 텍스트가 없지만 객체가 인식된 경우)
+    // 주의: "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
     const searchQuery = [extractedText, input.trim()].filter(Boolean).join(' ').trim();
+    console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
     if (!searchQuery) {
-      alert('텍스트를 입력하거나 이미지를 업로드해주세요.');
+      alert('텍스트를 입력하거나 이미지를 업로드해주세요.\n\n이미지를 업로드했지만 정보가 추출되지 않았다면, 추가로 텍스트를 입력해주세요.');
       return;
     }
 
@@ -432,10 +457,61 @@ function AiLlmPage() {
       await saveMessageToSession(welcomeMessage, sessionId);
     }
 
-    // 사용자 메시지 구성 (이미지가 있으면 이미지 정보 포함)
-    const userMessageText = selectedImage 
-      ? (extractedText ? `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim() : input.trim() || '[이미지 업로드됨]')
-      : input;
+    // ===== 화면 표시용 메시지 구성 =====
+    // 이 텍스트는 화면에만 표시되고, 실제 검색에는 사용되지 않음
+    // 검색에는 위의 searchQuery가 사용됨
+    let userMessageText = input;
+    console.log('extractedData:', extractedData); // 디버깅용
+    if (selectedImage && extractedData) {
+      // 구조화된 정보를 깔끔하게 포맷팅
+      const infoParts = [];
+      if (extractedData.productName) {
+        infoParts.push(`제품명: ${extractedData.productName}`);
+      }
+      if (extractedData.manufacturer) {
+        infoParts.push(`제조사: ${extractedData.manufacturer}`);
+      }
+      if (extractedData.size) {
+        infoParts.push(`사이즈 또는 규격: ${extractedData.size}`);
+      }
+      
+      if (infoParts.length > 0) {
+        userMessageText = `[이미지에서 추출된 정보]\n${infoParts.join('\n')}${input.trim() ? '\n\n' + input.trim() : ''}`;
+      } else if (extractedText) {
+        userMessageText = `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim();
+      } else {
+        userMessageText = input.trim() || '[이미지 업로드됨]';
+      }
+    } else if (selectedImage && extractedText) {
+      // 구조화된 데이터가 없어도 텍스트가 있으면 구조화 시도
+      // extractedText에서 정보 추출 시도 (예: "Coca-Cola 코카콜라 350 ml")
+      const parts = extractedText.split(/\s+/);
+      const infoParts = [];
+      
+      // 제조사 찾기 (영문 대문자로 시작)
+      const manufacturerMatch = parts.find(p => /^[A-Z][a-z]+(-[A-Z][a-z]+)*$/.test(p));
+      if (manufacturerMatch) {
+        infoParts.push(`제조사: ${manufacturerMatch}`);
+      }
+      
+      // 제품명 찾기 (한글)
+      const productMatch = parts.find(p => /^[가-힣]+$/.test(p));
+      if (productMatch) {
+        infoParts.push(`제품명: ${productMatch}`);
+      }
+      
+      // 사이즈 찾기 (숫자 + 단위)
+      const sizeMatch = parts.find(p => /\d+\s*(ml|mL|ML|L|l|g|kg|KG|cm|mm|m)/i.test(p));
+      if (sizeMatch) {
+        infoParts.push(`사이즈 또는 규격: ${sizeMatch}`);
+      }
+      
+      if (infoParts.length > 0) {
+        userMessageText = `[이미지에서 추출된 정보]\n${infoParts.join('\n')}${input.trim() ? '\n\n' + input.trim() : ''}`;
+      } else {
+        userMessageText = `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim();
+      }
+    }
 
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -935,7 +1011,20 @@ function AiLlmPage() {
                 {isExtractingImage && (
                   <div className="mt-2 text-xs text-gray-500">이미지에서 텍스트 추출 중...</div>
                 )}
-                {extractedImageText && (
+                {extractedImageData && (
+                  <div className="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded space-y-1">
+                    {extractedImageData.productName && (
+                      <div>제품명: <span className="font-semibold">{extractedImageData.productName}</span></div>
+                    )}
+                    {extractedImageData.manufacturer && (
+                      <div>제조사: <span className="font-semibold">{extractedImageData.manufacturer}</span></div>
+                    )}
+                    {extractedImageData.size && (
+                      <div>사이즈 또는 규격: <span className="font-semibold">{extractedImageData.size}</span></div>
+                    )}
+                  </div>
+                )}
+                {!extractedImageData && extractedImageText && (
                   <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
                     추출된 정보: {extractedImageText.substring(0, 100)}{extractedImageText.length > 100 ? '...' : ''}
                   </div>

@@ -394,7 +394,7 @@ function AiLlmPage() {
     }
   };
 
-  // 이미지 검색으로 제품명 추출
+  // 이미지 검색으로 제품명, 제조사, 사이즈 추출
   const searchImageForProductName = async (imageBase64) => {
     try {
       console.log('🔍 이미지 검색 시작...');
@@ -414,8 +414,9 @@ function AiLlmPage() {
       const data = await response.json();
       console.log('이미지 검색 결과:', data);
       
-      if (data.success && data.productName) {
-        return data.productName;
+      if (data.success && data.formatted) {
+        // 구조화된 데이터 반환 (제품명, 제조사, 사이즈)
+        return data.formatted;
       }
       
       return null;
@@ -444,7 +445,7 @@ function AiLlmPage() {
     // 이미지가 있으면 텍스트 추출 및 이미지 검색
     let extractedText = '';
     let extractedData = null;
-    let searchedProductName = null; // 이미지 검색으로 추출된 제품명
+    let searchedProductInfo = null; // 이미지 검색으로 추출된 제품 정보 (제품명, 제조사, 사이즈)
     if (selectedImage && imagePreview) {
       // 1. Vision API로 텍스트 추출
       const extractionResult = await extractTextFromImage(imagePreview);
@@ -457,23 +458,37 @@ function AiLlmPage() {
       setExtractedImageText(extractedText);
       setExtractedImageData(extractedData);
       
-      // 2. 이미지 검색으로 제품명 추출 (탄소배출량 모드일 때만)
+      // 2. 이미지 검색으로 제품 정보 추출 (탄소배출량 모드일 때만)
       if (selectedTool === 'chatbot') {
-        searchedProductName = await searchImageForProductName(imagePreview);
-        console.log('🔍 이미지 검색으로 추출된 제품명:', searchedProductName);
+        searchedProductInfo = await searchImageForProductName(imagePreview);
+        console.log('🔍 이미지 검색으로 추출된 제품 정보:', searchedProductInfo);
         
-        // 검색으로 추출된 제품명이 있고, extractedData에 제품명이 없으면 추가
-        if (searchedProductName && (!extractedData || !extractedData.productName)) {
+        // 검색으로 추출된 제품 정보가 있으면 extractedData에 병합
+        if (searchedProductInfo) {
           if (!extractedData) {
             extractedData = { productName: '', manufacturer: '', size: '' };
           }
-          extractedData.productName = searchedProductName;
+          // 검색 결과로 우선 채우기 (없는 필드만)
+          if (searchedProductInfo.productName && !extractedData.productName) {
+            extractedData.productName = searchedProductInfo.productName;
+          }
+          if (searchedProductInfo.manufacturer && !extractedData.manufacturer) {
+            extractedData.manufacturer = searchedProductInfo.manufacturer;
+          }
+          if (searchedProductInfo.size && !extractedData.size) {
+            extractedData.size = searchedProductInfo.size;
+          }
           setExtractedImageData(extractedData);
         }
         
         // 검색으로 추출된 제품명을 extractedText에 포함 (없는 경우에만)
-        if (searchedProductName && !extractedText.includes(searchedProductName)) {
-          extractedText = [searchedProductName, extractedText].filter(Boolean).join(' ').trim();
+        if (searchedProductInfo?.productName && !extractedText.includes(searchedProductInfo.productName)) {
+          const searchText = [
+            searchedProductInfo.productName,
+            searchedProductInfo.manufacturer,
+            searchedProductInfo.size
+          ].filter(Boolean).join(' ');
+          extractedText = [searchText, extractedText].filter(Boolean).join(' ').trim();
         }
       }
       
@@ -485,11 +500,15 @@ function AiLlmPage() {
     // 예: "알루미늄 프로파일" (이미지 검색) + "Coca-Cola 코카콜라 350 ml" (Vision API) + "탄소배출량은?" (사용자 입력)
     // 주의: "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
     
-    // 이미지 검색으로 제품명을 추출했지만 extractedText가 비어있으면, 제품명을 기본 검색 쿼리로 사용
+    // 이미지 검색으로 제품 정보를 추출했지만 extractedText가 비어있으면, 제품명을 기본 검색 쿼리로 사용
     let finalExtractedText = extractedText;
-    if (!finalExtractedText && searchedProductName) {
-      finalExtractedText = searchedProductName;
-      console.log('🔍 이미지 검색으로 추출된 제품명을 기본 검색 쿼리로 사용:', searchedProductName);
+    if (!finalExtractedText && searchedProductInfo?.productName) {
+      finalExtractedText = [
+        searchedProductInfo.productName,
+        searchedProductInfo.manufacturer,
+        searchedProductInfo.size
+      ].filter(Boolean).join(' ');
+      console.log('🔍 이미지 검색으로 추출된 제품 정보를 기본 검색 쿼리로 사용:', finalExtractedText);
     }
     
     const searchQuery = [finalExtractedText, input.trim()].filter(Boolean).join(' ').trim();
@@ -641,9 +660,21 @@ function AiLlmPage() {
       if (selectedTool === 'chatbot') {
         responseText = data.response || data.answer || 'Sorry, I could not process your request.';
         
-        // 이미지 검색으로 추출된 제품명이 있으면 답변 앞에 추가
-        if (searchedProductName) {
-          responseText = `[이미지 검색 결과: 제품명 "${searchedProductName}"]\n\n${responseText}`;
+        // 이미지 검색으로 추출된 제품 정보가 있으면 답변 앞에 추가
+        if (searchedProductInfo) {
+          const infoParts = [];
+          if (searchedProductInfo.productName) {
+            infoParts.push(`제품명: ${searchedProductInfo.productName}`);
+          }
+          if (searchedProductInfo.manufacturer) {
+            infoParts.push(`제조사: ${searchedProductInfo.manufacturer}`);
+          }
+          if (searchedProductInfo.size) {
+            infoParts.push(`사이즈: ${searchedProductInfo.size}`);
+          }
+          if (infoParts.length > 0) {
+            responseText = `[이미지 검색 결과: ${infoParts.join(', ')}]\n\n${responseText}`;
+          }
         }
       } else {
         // embed 응답 처리

@@ -235,8 +235,8 @@ export default async function handler(req, res) {
       console.log('🔍 SerpAPI 응답 구조:', responsePreview);
     }
 
-    // 검색 결과에서 제품명 추출
-    const productName = extractProductNameFromSerpAPIResults(searchData);
+    // 검색 결과에서 제품명, 제조사, 사이즈 추출
+    const extractedData = extractProductInfoFromSerpAPIResults(searchData);
 
     // 검색 결과 수집 (visual_matches, exact_matches, inline_images 등)
     const allSearchResults = [
@@ -247,7 +247,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      productName: productName,
+      productName: extractedData.productName,
+      manufacturer: extractedData.manufacturer,
+      size: extractedData.size,
+      formatted: extractedData, // 구조화된 전체 데이터
       searchQuery: imageSearchUrl,
       searchResults: allSearchResults,
       rawData: {
@@ -256,7 +259,9 @@ export default async function handler(req, res) {
         exactMatchesCount: searchData.exact_matches?.length || 0,
         inlineImagesCount: searchData.inline_images?.length || 0
       },
-      message: productName ? `제품명: ${productName}` : '제품명을 찾을 수 없습니다.'
+      message: extractedData.productName 
+        ? `제품명: ${extractedData.productName}${extractedData.manufacturer ? `, 제조사: ${extractedData.manufacturer}` : ''}${extractedData.size ? `, 사이즈: ${extractedData.size}` : ''}`
+        : '제품명을 찾을 수 없습니다.'
     });
 
   } catch (error) {
@@ -268,129 +273,205 @@ export default async function handler(req, res) {
   }
 }
 
-// SerpAPI 검색 결과에서 제품명 추출 (크롬 이미지 검색과 동일한 방식)
-function extractProductNameFromSerpAPIResults(searchData) {
-  console.log('🔍 제품명 추출 시작, 응답 키:', Object.keys(searchData));
+// SerpAPI 검색 결과에서 제품명, 제조사, 사이즈 추출 (구조화된 데이터)
+function extractProductInfoFromSerpAPIResults(searchData) {
+  console.log('🔍 제품 정보 추출 시작, 응답 키:', Object.keys(searchData));
+  
+  let rawTitle = null;
   
   // 1. Knowledge Graph에서 제품명 추출 (가장 신뢰도 높음)
   if (searchData.knowledge_graph) {
     console.log('🔍 Knowledge Graph 데이터:', JSON.stringify(searchData.knowledge_graph, null, 2));
     const kg = searchData.knowledge_graph;
     
-    // title이 있으면 우선 사용
     if (kg.title) {
-      console.log('✅ Knowledge Graph title에서 제품명 추출:', kg.title);
-      return kg.title;
-    }
-    
-    // subtitle도 확인
-    if (kg.subtitle) {
-      console.log('✅ Knowledge Graph subtitle에서 제품명 추출:', kg.subtitle);
-      return kg.subtitle;
+      rawTitle = kg.title;
+      console.log('✅ Knowledge Graph title:', rawTitle);
+    } else if (kg.subtitle) {
+      rawTitle = kg.subtitle;
+      console.log('✅ Knowledge Graph subtitle:', rawTitle);
     }
   }
 
-  // 2. Exact Matches에서 제품명 추출 (정확히 일치하는 이미지)
-  if (searchData.exact_matches && Array.isArray(searchData.exact_matches) && searchData.exact_matches.length > 0) {
+  // 2. Exact Matches에서 제품명 추출
+  if (!rawTitle && searchData.exact_matches && Array.isArray(searchData.exact_matches) && searchData.exact_matches.length > 0) {
     console.log('🔍 Exact Matches 개수:', searchData.exact_matches.length);
     for (const match of searchData.exact_matches.slice(0, 5)) {
       if (match.title) {
-        console.log('✅ Exact Match에서 제품명 추출:', match.title);
-        return match.title;
+        rawTitle = match.title;
+        console.log('✅ Exact Match title:', rawTitle);
+        break;
       }
     }
   }
 
-  // 3. Visual Matches에서 제품명 추출 (시각적으로 유사한 이미지)
-  if (searchData.visual_matches && Array.isArray(searchData.visual_matches) && searchData.visual_matches.length > 0) {
+  // 3. Visual Matches에서 제품명 추출
+  if (!rawTitle && searchData.visual_matches && Array.isArray(searchData.visual_matches) && searchData.visual_matches.length > 0) {
     console.log('🔍 Visual Matches 개수:', searchData.visual_matches.length);
-    console.log('🔍 첫 번째 Visual Match:', JSON.stringify(searchData.visual_matches[0], null, 2));
     
     // 한글이 포함된 title 우선 찾기
     for (const match of searchData.visual_matches.slice(0, 10)) {
-      if (match.title) {
-        // 한글이 포함되어 있으면 우선 사용
-        if (/[가-힣]/.test(match.title)) {
-          console.log('✅ Visual Match에서 한글 제품명 추출:', match.title);
-          return match.title;
-        }
+      if (match.title && /[가-힣]/.test(match.title)) {
+        rawTitle = match.title;
+        console.log('✅ Visual Match 한글 title:', rawTitle);
+        break;
       }
     }
     
     // 한글이 없어도 첫 번째 title 사용
-    const firstMatch = searchData.visual_matches[0];
-    if (firstMatch.title) {
-      console.log('✅ Visual Match에서 제품명 추출 (영문):', firstMatch.title);
-      return firstMatch.title;
-    }
-    
-    // link에서 제품명 추출 시도
-    if (firstMatch.link) {
-      const linkMatch = firstMatch.link.match(/([^\/]+)$/);
-      if (linkMatch && linkMatch[1]) {
-        const decodedLink = decodeURIComponent(linkMatch[1]);
-        if (/[가-힣]/.test(decodedLink)) {
-          console.log('✅ Visual Match link에서 제품명 추출:', decodedLink);
-          return decodedLink;
-        }
-      }
+    if (!rawTitle && searchData.visual_matches[0]?.title) {
+      rawTitle = searchData.visual_matches[0].title;
+      console.log('✅ Visual Match title:', rawTitle);
     }
   }
 
   // 4. Reverse Image Search 결과에서 제품명 추출
-  if (searchData.reverse_image_search) {
-    const ris = searchData.reverse_image_search;
-    console.log('🔍 Reverse Image Search 데이터:', JSON.stringify(ris, null, 2));
-    
-    if (ris.title) {
-      console.log('✅ Reverse Image Search title에서 제품명 추출:', ris.title);
-      return ris.title;
-    }
+  if (!rawTitle && searchData.reverse_image_search?.title) {
+    rawTitle = searchData.reverse_image_search.title;
+    console.log('✅ Reverse Image Search title:', rawTitle);
   }
 
-  // 5. Inline Images에서 제품명 추출 시도
-  if (searchData.inline_images && Array.isArray(searchData.inline_images) && searchData.inline_images.length > 0) {
-    console.log('🔍 Inline Images 개수:', searchData.inline_images.length);
+  // 5. Inline Images에서 제품명 추출
+  if (!rawTitle && searchData.inline_images && Array.isArray(searchData.inline_images) && searchData.inline_images.length > 0) {
     for (const image of searchData.inline_images.slice(0, 5)) {
       if (image.title) {
-        if (/[가-힣]/.test(image.title)) {
-          console.log('✅ Inline Image에서 한글 제품명 추출:', image.title);
-          return image.title;
-        }
+        rawTitle = image.title;
+        console.log('✅ Inline Image title:', rawTitle);
+        break;
       }
-    }
-    
-    // 한글이 없어도 첫 번째 title 사용
-    if (searchData.inline_images[0]?.title) {
-      console.log('✅ Inline Image에서 제품명 추출:', searchData.inline_images[0].title);
-      return searchData.inline_images[0].title;
     }
   }
 
-  // 6. Related Searches에서 제품명 추출 시도
-  if (searchData.related_searches && Array.isArray(searchData.related_searches) && searchData.related_searches.length > 0) {
-    console.log('🔍 Related Searches 개수:', searchData.related_searches.length);
+  // 6. Related Searches에서 제품명 추출
+  if (!rawTitle && searchData.related_searches && Array.isArray(searchData.related_searches) && searchData.related_searches.length > 0) {
     for (const search of searchData.related_searches.slice(0, 5)) {
-      if (search.query) {
-        if (/[가-힣]/.test(search.query)) {
-          console.log('✅ Related Search에서 한글 제품명 추출:', search.query);
-          return search.query;
-        }
+      if (search.query && /[가-힣]/.test(search.query)) {
+        rawTitle = search.query;
+        console.log('✅ Related Search query:', rawTitle);
+        break;
       }
     }
   }
 
-  // 7. Organic Results에서 제품명 추출 시도
-  if (searchData.organic_results && Array.isArray(searchData.organic_results) && searchData.organic_results.length > 0) {
-    console.log('🔍 Organic Results 개수:', searchData.organic_results.length);
+  // 7. Organic Results에서 제품명 추출
+  if (!rawTitle && searchData.organic_results && Array.isArray(searchData.organic_results) && searchData.organic_results.length > 0) {
     for (const result of searchData.organic_results.slice(0, 5)) {
       if (result.title && /[가-힣]/.test(result.title)) {
-        console.log('✅ Organic Result에서 제품명 추출:', result.title);
-        return result.title;
+        rawTitle = result.title;
+        console.log('✅ Organic Result title:', rawTitle);
+        break;
       }
     }
   }
 
-  console.log('❌ 제품명을 찾을 수 없음 - 모든 소스 확인 완료');
-  return null;
+  // rawTitle에서 제품명, 제조사, 사이즈 파싱
+  if (rawTitle) {
+    const parsed = parseProductInfo(rawTitle);
+    console.log('✅ 파싱된 제품 정보:', parsed);
+    return parsed;
+  }
+
+  console.log('❌ 제품명을 찾을 수 없음');
+  return { productName: null, manufacturer: null, size: null };
+}
+
+// 제목 텍스트에서 제품명, 제조사, 사이즈 추출
+function parseProductInfo(title) {
+  if (!title) {
+    return { productName: null, manufacturer: null, size: null };
+  }
+
+  let productName = null;
+  let manufacturer = null;
+  let size = null;
+
+  // 예: "알루미늄 프로파일 2020 (100mm): 다나와 가격비교"
+  // 예: "Coca-Cola 코카콜라 350ml"
+  // 예: "삼성 갤럭시 S24 울트라 512GB"
+
+  // 1. 사이즈 추출 (숫자 + 단위 패턴)
+  const sizePatterns = [
+    /(\d+(?:\.\d+)?\s*(?:mm|cm|m|ml|L|g|kg|GB|TB|인치|inch|oz|lb))/gi,
+    /\((\d+(?:\s*x\s*\d+)?(?:\s*mm|\s*cm|\s*m)?)\)/gi, // (100mm), (20x20mm)
+    /(\d{4})/g, // 2020, 2024 같은 연도나 모델 번호
+  ];
+
+  for (const pattern of sizePatterns) {
+    const match = title.match(pattern);
+    if (match && match[0]) {
+      size = match[0].trim();
+      break;
+    }
+  }
+
+  // 2. 제조사 추출 (영문 대문자로 시작하는 브랜드명)
+  const manufacturerPatterns = [
+    /([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)/g, // Coca-Cola, Samsung Galaxy
+    /([가-힣]+(?:\s+[가-힣]+)*)\s+(?:제조|제작|브랜드|회사)/g, // 한국어 제조사
+  ];
+
+  for (const pattern of manufacturerPatterns) {
+    const matches = title.matchAll(pattern);
+    for (const match of matches) {
+      const candidate = match[1].trim();
+      // 일반적인 단어 제외
+      if (!['The', 'And', 'For', 'With', 'From', 'This', 'That'].includes(candidate)) {
+        manufacturer = candidate;
+        break;
+      }
+    }
+    if (manufacturer) break;
+  }
+
+  // 3. 제품명 추출
+  // 사이즈와 제조사를 제거한 나머지 텍스트에서 제품명 추출
+  let cleanedTitle = title;
+  
+  // 사이즈 제거
+  if (size) {
+    cleanedTitle = cleanedTitle.replace(new RegExp(size.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
+  }
+  
+  // 제조사 제거
+  if (manufacturer) {
+    cleanedTitle = cleanedTitle.replace(new RegExp(manufacturer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
+  }
+  
+  // 불필요한 문자 제거 (:, -, 다나와, 가격비교 등)
+  cleanedTitle = cleanedTitle
+    .replace(/[:：]\s*[^:：]*$/g, '') // 콜론 이후 제거
+    .replace(/\s*[-–—]\s*[^-–—]*$/g, '') // 하이픈 이후 제거
+    .replace(/\s*(다나와|가격비교|구매|판매|쇼핑|온라인|몰|스토어).*$/gi, '') // 불필요한 단어 제거
+    .replace(/\s+/g, ' ') // 여러 공백을 하나로
+    .trim();
+
+  // 한글이 포함된 경우 우선 사용
+  if (/[가-힣]/.test(cleanedTitle)) {
+    // 한글 단어 추출 (2자 이상)
+    const koreanWords = cleanedTitle.match(/[가-힣]{2,}/g);
+    if (koreanWords && koreanWords.length > 0) {
+      productName = koreanWords.join(' ');
+    } else {
+      productName = cleanedTitle;
+    }
+  } else {
+    // 영문인 경우 첫 번째 단어 조합
+    const words = cleanedTitle.split(/\s+/).filter(w => w.length > 1);
+    if (words.length > 0) {
+      productName = words.slice(0, 3).join(' '); // 최대 3단어
+    } else {
+      productName = cleanedTitle;
+    }
+  }
+
+  // 제품명이 너무 짧거나 의미없는 경우 원본 제목 사용
+  if (!productName || productName.length < 2) {
+    productName = title.split(/[:：\-–—]/)[0].trim(); // 첫 번째 부분만
+  }
+
+  return {
+    productName: productName || null,
+    manufacturer: manufacturer || null,
+    size: size || null
+  };
 }

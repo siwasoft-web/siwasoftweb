@@ -60,6 +60,21 @@ export default function ProjectDashboardPage() {
   const [selectedLog, setSelectedLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const allLines = selectedLog?.LOG
+    ? selectedLog.LOG.split('\n').filter((line) => line.trim() !== '')
+    : [];
+
+  const filteredLines = searchTerm
+    ? allLines.filter((line) => line.toLowerCase().includes(searchTerm.toLowerCase()))
+    : allLines;
+
+  const logsPerPage = 5;
+  const totalPages = Math.ceil(filteredLines.length / logsPerPage);
+  const startIdx = (currentPage - 1) * logsPerPage;
+  const currentLogs = filteredLines.slice(startIdx, startIdx + logsPerPage);
 
   // 프로젝트 이름 가져오기
   const fetchProjectName = async () => {
@@ -108,6 +123,8 @@ export default function ProjectDashboardPage() {
 
   const handleLogClick = (log) => {
     setSelectedLog(log);
+    setCurrentPage(1); // ④ 페이지 초기화 추가
+    setSearchTerm('');
   };
 
   if (loading)
@@ -178,28 +195,119 @@ export default function ProjectDashboardPage() {
 
       {/* 로그 상세 출력 섹션 */}
       {selectedLog && (
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            {selectedLog?.TITLE || 'RPA'} 로그
-          </h2>
-          <div className="space-y-3">
-            {selectedLog.LOG
-              ? selectedLog.LOG.split('\n')
-                  .filter((line) => line.trim() !== '')
-                  .map((line, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      {line}
-                    </div>
-                  ))
-              : (
-                <div className="text-gray-400 text-sm">
-                  로그 데이터가 없습니다.
-                </div>
-              )}
+        <div className="mt-10">
+          {/* 상단 헤더 + 검색 영역 */}
+          <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+            <h2 className="text-2xl font-bold text-gray-800">
+              {selectedLog?.TITLE || 'RPA'} 로그
+            </h2>
+
+            {/* 🔍 검색창 */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="로그 검색"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1 w-52 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <button
+                onClick={() => setSearchTerm('')}
+                className="px-2.5 py-1 bg-gray-200 text-sm rounded-lg hover:bg-gray-300"
+              >
+                초기화
+              </button>
+            </div>
           </div>
+
+          {(() => {
+            return (
+              <>
+                {/* 로그 출력 */}
+                <div className="space-y-3">
+                  {currentLogs.length > 0 ? (
+                    currentLogs.map((rawLine, idx) => {
+                      // ① '|' → 공백 치환
+                      const line = rawLine.replace(/\|/g, ' / ');
+
+                      // ② 오류 색상 감지
+                      const isError =
+                        line.includes('오류') ||
+                        line.includes('에러') ||
+                        line.toLowerCase().includes('error') ||
+                        line.toLowerCase().includes('fail');
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`border rounded-lg shadow-sm p-3 text-sm transition-colors ${
+                            isError
+                              ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
+                              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {line}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-gray-400 text-sm">
+                      로그 데이터가 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                {/* 페이지네이션 */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
+                    {/* 이전 */}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-md border text-sm ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      이전
+                    </button>
+
+                    {/* 페이지 번호 */}
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 rounded-md text-sm font-medium border ${
+                            currentPage === pageNum
+                              ? 'bg-blue-500 text-white border-blue-500'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    {/* 다음 */}
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-md border text-sm ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

@@ -394,6 +394,38 @@ function AiLlmPage() {
     }
   };
 
+  // 이미지 검색으로 제품명 추출
+  const searchImageForProductName = async (imageBase64) => {
+    try {
+      console.log('🔍 이미지 검색 시작...');
+      const response = await fetch('/api/image-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ imageBase64 })
+      });
+
+      if (!response.ok) {
+        console.warn('이미지 검색 실패:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('이미지 검색 결과:', data);
+      
+      if (data.success && data.productName) {
+        return data.productName;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Image search error:', error);
+      // 이미지 검색 실패는 치명적이지 않으므로 null 반환
+      return null;
+    }
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if ((input.trim() === '' && !selectedImage) || isLoading) return;
@@ -409,10 +441,12 @@ function AiLlmPage() {
       }
     }
 
-    // 이미지가 있으면 텍스트 추출
+    // 이미지가 있으면 텍스트 추출 및 이미지 검색
     let extractedText = '';
     let extractedData = null;
+    let searchedProductName = null; // 이미지 검색으로 추출된 제품명
     if (selectedImage && imagePreview) {
+      // 1. Vision API로 텍스트 추출
       const extractionResult = await extractTextFromImage(imagePreview);
       // extractedText: 검색에 사용될 텍스트 (예: "Coca-Cola 코카콜라 350 ml")
       // - Vision API에서 제조사, 제품명, 사이즈만 추출하여 공백으로 조합한 것
@@ -422,15 +456,43 @@ function AiLlmPage() {
       extractedData = extractionResult.formatted || null;
       setExtractedImageText(extractedText);
       setExtractedImageData(extractedData);
+      
+      // 2. 이미지 검색으로 제품명 추출 (탄소배출량 모드일 때만)
+      if (selectedTool === 'chatbot') {
+        searchedProductName = await searchImageForProductName(imagePreview);
+        console.log('🔍 이미지 검색으로 추출된 제품명:', searchedProductName);
+        
+        // 검색으로 추출된 제품명이 있고, extractedData에 제품명이 없으면 추가
+        if (searchedProductName && (!extractedData || !extractedData.productName)) {
+          if (!extractedData) {
+            extractedData = { productName: '', manufacturer: '', size: '' };
+          }
+          extractedData.productName = searchedProductName;
+          setExtractedImageData(extractedData);
+        }
+        
+        // 검색으로 추출된 제품명을 extractedText에 포함 (없는 경우에만)
+        if (searchedProductName && !extractedText.includes(searchedProductName)) {
+          extractedText = [searchedProductName, extractedText].filter(Boolean).join(' ').trim();
+        }
+      }
+      
       // 추출 실패 시에도 사용자 입력 텍스트로 검색 가능하도록 함
     }
 
     // ===== 실제 검색 쿼리 구성 =====
-    // 검색에 사용되는 텍스트: 이미지에서 추출된 텍스트 + 사용자가 입력한 텍스트
-    // 예: "Coca-Cola 코카콜라 350 ml" + "탄소배출량은?"
-    // 또는: "Food" (이미지에서 텍스트가 없지만 객체가 인식된 경우)
+    // 검색에 사용되는 텍스트: 이미지 검색으로 추출된 제품명 + 이미지에서 추출된 텍스트 + 사용자가 입력한 텍스트
+    // 예: "알루미늄 프로파일" (이미지 검색) + "Coca-Cola 코카콜라 350 ml" (Vision API) + "탄소배출량은?" (사용자 입력)
     // 주의: "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
-    const searchQuery = [extractedText, input.trim()].filter(Boolean).join(' ').trim();
+    
+    // 이미지 검색으로 제품명을 추출했지만 extractedText가 비어있으면, 제품명을 기본 검색 쿼리로 사용
+    let finalExtractedText = extractedText;
+    if (!finalExtractedText && searchedProductName) {
+      finalExtractedText = searchedProductName;
+      console.log('🔍 이미지 검색으로 추출된 제품명을 기본 검색 쿼리로 사용:', searchedProductName);
+    }
+    
+    const searchQuery = [finalExtractedText, input.trim()].filter(Boolean).join(' ').trim();
     console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
     if (!searchQuery) {
@@ -578,6 +640,11 @@ function AiLlmPage() {
       let responseText;
       if (selectedTool === 'chatbot') {
         responseText = data.response || data.answer || 'Sorry, I could not process your request.';
+        
+        // 이미지 검색으로 추출된 제품명이 있으면 답변 앞에 추가
+        if (searchedProductName) {
+          responseText = `[이미지 검색 결과: 제품명 "${searchedProductName}"]\n\n${responseText}`;
+        }
       } else {
         // embed 응답 처리
         if (withAnswer && data.answer) {

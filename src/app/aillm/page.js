@@ -47,6 +47,214 @@ function AiLlmPage() {
     '최종 답변을 준비하고 있습니다'
   ];
 
+  // 박스 문자 테이블을 파싱하는 함수
+  const parseBoxTable = (text) => {
+    const lines = text.split('\n');
+    const result = [];
+    let currentSection = null;
+    let currentSectionLines = [];
+    let inBox = false;
+    
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      
+      // 박스 시작 (┌─ 로 시작)
+      if (trimmedLine.startsWith('┌─') || trimmedLine.startsWith('┌')) {
+        // 이전 섹션 처리
+        if (currentSection && currentSectionLines.length > 0) {
+          const html = convertBoxSectionToHTML(currentSection, currentSectionLines);
+          result.push({ type: 'html', content: html });
+          currentSectionLines = [];
+        }
+        
+        // 새 섹션 시작 - ┌─ 제목 ──┐ 형식에서 제목 추출
+        const sectionMatch = trimmedLine.match(/┌─\s*([^─]+?)(?:\s*─+)?\s*┐/);
+        if (sectionMatch) {
+          currentSection = sectionMatch[1].trim();
+        } else {
+          // ┌─ 없이 ┌로만 시작하는 경우
+          const altMatch = trimmedLine.match(/┌\s*([^┐]+)/);
+          if (altMatch) {
+            currentSection = altMatch[1].trim();
+          } else {
+            currentSection = '정보';
+          }
+        }
+        inBox = true;
+        return;
+      }
+      
+      // 박스 끝 (└로 시작)
+      if (trimmedLine.startsWith('└')) {
+        inBox = false;
+        // 섹션 처리
+        if (currentSection && currentSectionLines.length > 0) {
+          const html = convertBoxSectionToHTML(currentSection, currentSectionLines);
+          result.push({ type: 'html', content: html });
+          currentSection = null;
+          currentSectionLines = [];
+        }
+        return;
+      }
+      
+      // 박스 내부 라인 (│로 시작)
+      if (inBox && (trimmedLine.startsWith('│') || trimmedLine.includes('│'))) {
+        // 구분선 제거 (├─, ┤, ┼ 등으로만 구성된 줄)
+        if (!trimmedLine.match(/^[├┤┼─\s│]+$/)) {
+          currentSectionLines.push(line);
+        }
+        return;
+      }
+      
+      // 박스 내부 빈 줄은 무시
+      if (inBox && !trimmedLine) {
+        return;
+      }
+      
+      // 박스 외부 텍스트
+      if (!inBox && trimmedLine) {
+        if (currentSection && currentSectionLines.length > 0) {
+          const html = convertBoxSectionToHTML(currentSection, currentSectionLines);
+          result.push({ type: 'html', content: html });
+          currentSection = null;
+          currentSectionLines = [];
+        }
+        result.push({ type: 'text', content: line });
+      }
+    });
+    
+    // 마지막 섹션 처리
+    if (currentSection && currentSectionLines.length > 0) {
+      const html = convertBoxSectionToHTML(currentSection, currentSectionLines);
+      result.push({ type: 'html', content: html });
+    }
+    
+    return result.map(item => item.content).join('\n');
+  };
+  
+  // 박스 섹션을 HTML로 변환하는 함수
+  const convertBoxSectionToHTML = (sectionTitle, lines) => {
+    if (lines.length === 0) return '';
+    
+    // 첫 번째 라인에서 헤더 추출 시도 (테이블 형식인지 확인)
+    const firstLine = lines[0].trim();
+    const hasTableHeaders = firstLine.includes('│') && firstLine.split('│').length > 3;
+    
+    if (hasTableHeaders) {
+      // 테이블 형식 (세금계산서 세부내역 같은 경우)
+      return convertBoxTableToHTML(sectionTitle, lines);
+    } else {
+      // 키-값 형식 (업체정보, 계산서 정보 같은 경우)
+      return convertBoxKeyValueToHTML(sectionTitle, lines);
+    }
+  };
+  
+  // 박스 테이블을 HTML 테이블로 변환
+  const convertBoxTableToHTML = (sectionTitle, lines) => {
+    if (lines.length === 0) return '';
+    
+    // 헤더 추출 (첫 번째 라인)
+    const headerLine = lines[0].trim();
+    // │로 split하고, 첫 번째와 마지막 빈 요소 제거, 나머지는 모두 유지 (빈 셀 포함)
+    const headerParts = headerLine.split('│');
+    // 첫 번째와 마지막이 빈 문자열이거나 경계 문자만 있는 경우 제거
+    const headers = headerParts
+      .slice(1, -1) // 첫 번째와 마지막 제거
+      .map(h => h.trim())
+      .map(h => h.match(/^[├┤┼─\s]+$/) ? '' : h); // 구분선 문자만 있으면 빈 문자열로
+    
+    if (headers.length === 0) return '';
+    
+    // 데이터 행 추출
+    const dataRows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('│') && !line.match(/^[├┤┼─\s│]+$/)) {
+        // │로 split하고, 첫 번째와 마지막 빈 요소 제거, 나머지는 모두 유지 (빈 셀 포함)
+        const cellParts = line.split('│');
+        const cells = cellParts
+          .slice(1, -1) // 첫 번째와 마지막 제거
+          .map(c => c.trim())
+          .map(c => c.match(/^[├┤┼─\s]+$/) ? '' : c); // 구분선 문자만 있으면 빈 문자열로
+        
+        // 헤더 개수와 맞추기 위해 빈 셀 추가
+        while (cells.length < headers.length) {
+          cells.push('');
+        }
+        
+        if (cells.length > 0) {
+          dataRows.push(cells);
+        }
+      }
+    }
+    
+    // HTML 테이블 생성
+    let html = `<div class="mb-6">`;
+    html += `<h3 class="text-lg font-semibold text-gray-800 mb-3">${sectionTitle}</h3>`;
+    html += `<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-300 text-sm bg-white shadow-sm">`;
+    
+    // 헤더
+    html += '<thead><tr class="bg-gray-100">';
+    headers.forEach(header => {
+      html += `<th class="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">${header}</th>`;
+    });
+    html += '</tr></thead>';
+    
+    // 바디
+    html += '<tbody>';
+    dataRows.forEach((row, rowIndex) => {
+      html += `<tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors">`;
+      headers.forEach((header, colIndex) => {
+        // 헤더 개수만큼 셀을 표시 (빈 셀도 유지)
+        const cell = row[colIndex] !== undefined ? row[colIndex] : '';
+        // 숫자 정렬 (숫자로 시작하거나 숫자와 콤마, 마이너스 포함)
+        const isNumeric = cell && /^-?[\d,]+/.test(cell.trim());
+        const alignClass = isNumeric ? 'text-right' : 'text-left';
+        html += `<td class="border border-gray-300 px-4 py-2 ${alignClass} text-gray-800">${cell}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+    
+    return html;
+  };
+  
+  // 박스 키-값 형식을 HTML로 변환
+  const convertBoxKeyValueToHTML = (sectionTitle, lines) => {
+    const data = [];
+    
+    lines.forEach(line => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith('│')) {
+        // │ 키 : 값 │ 형식 파싱
+        const content = trimmedLine.replace(/^│\s*/, '').replace(/\s*│$/, '').trim();
+        const match = content.match(/^(.+?)\s*:\s*(.+)$/);
+        if (match) {
+          data.push({ key: match[1].trim(), value: match[2].trim() });
+        }
+      }
+    });
+    
+    if (data.length === 0) return '';
+    
+    let html = `<div class="mb-6">`;
+    html += `<h3 class="text-lg font-semibold text-gray-800 mb-3">${sectionTitle}</h3>`;
+    html += `<div class="bg-white border border-gray-300 rounded-lg shadow-sm overflow-hidden">`;
+    html += '<table class="min-w-full">';
+    html += '<tbody>';
+    
+    data.forEach((item, index) => {
+      html += `<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">`;
+      html += `<td class="px-4 py-3 font-semibold text-gray-700 border-b border-gray-200 w-1/3">${item.key}</td>`;
+      html += `<td class="px-4 py-3 text-gray-800 border-b border-gray-200">${item.value}</td>`;
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table></div></div>';
+    
+    return html;
+  };
+
   // 마크다운 테이블을 HTML 테이블로 변환하는 함수
   const parseMarkdownTable = (text) => {
     const lines = text.split('\n');
@@ -142,11 +350,20 @@ function AiLlmPage() {
       return <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
     }
     
-    // 세금계산서 발행 모드일 때는 테이블 변환 적용
-    const processedText = parseMarkdownTable(text);
+    // 박스 문자 테이블이 있는지 확인 (┌─ 또는 ┌로 시작)
+    const hasBoxTable = text.includes('┌─') || text.includes('┌') || text.includes('│');
+    
+    let processedText;
+    if (hasBoxTable) {
+      // 박스 문자 테이블 파싱
+      processedText = parseBoxTable(text);
+    } else {
+      // 마크다운 테이블 파싱
+      processedText = parseMarkdownTable(text);
+    }
     
     // HTML이 포함되어 있는지 확인
-    if (processedText.includes('<table')) {
+    if (processedText.includes('<table') || processedText.includes('<div class="mb-6">')) {
       return <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: processedText }} />;
     }
     

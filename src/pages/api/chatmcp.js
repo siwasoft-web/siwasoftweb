@@ -15,12 +15,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    if (!tool || !['chatbot', 'embed', 'gitagent'].includes(tool)) {
-      return res.status(400).json({ error: 'Tool must be one of: "chatbot", "embed", "gitagent"' });
+    if (!tool || !['chatbot', 'embed', 'gitagent', 'nerp'].includes(tool)) {
+      return res.status(400).json({ error: 'Tool must be one of: "chatbot", "embed", "gitagent", "nerp"' });
     }
 
     // FastAPI 백엔드 엔드포인트 결정 (환경 변수 우선, fallback으로 IP 사용)
-    const endpoint = tool === 'chatbot' ? '/chatbot' : tool === 'embed' ? '/embed' : '/gitagent';
+    const endpoint = tool === 'chatbot' ? '/chatbot' : tool === 'embed' ? '/embed' : tool === 'gitagent' ? '/gitagent' : '/nerp';
     const baseUrl = process.env.API_BASE_URL || 'http://221.139.227.131:8000';
     const url = `${baseUrl}${endpoint}`;
     console.log('Calling FastAPI endpoint:', url);
@@ -30,8 +30,8 @@ export default async function handler(req, res) {
       query: query
     });
 
-    // embed 또는 gitagent 모드일 때 with_answer 파라미터 추가
-    if (tool === 'embed' || tool === 'gitagent') {
+    // embed, gitagent 또는 nerp 모드일 때 with_answer 파라미터 추가
+    if (tool === 'embed' || tool === 'gitagent' || tool === 'nerp') {
       body.append('with_answer', with_answer ? 'true' : 'false');
     }
 

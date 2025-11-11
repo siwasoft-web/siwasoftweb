@@ -13,7 +13,7 @@ function AiLlmPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState('chatbot'); // 'chatbot', 'embed', or 'gitagent'
+  const [selectedTool, setSelectedTool] = useState('chatbot'); // 'chatbot', 'embed', 'gitagent', or 'nerp'
   const [withAnswer, setWithAnswer] = useState(true);
   const [hasStarted, setHasStarted] = useState(false);
   const [responseTime, setResponseTime] = useState(null);
@@ -46,6 +46,112 @@ function AiLlmPage() {
     '답변을 추론하고 있습니다',
     '최종 답변을 준비하고 있습니다'
   ];
+
+  // 마크다운 테이블을 HTML 테이블로 변환하는 함수
+  const parseMarkdownTable = (text) => {
+    const lines = text.split('\n');
+    const result = [];
+    let currentTable = [];
+    let inTable = false;
+    
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // 테이블 행인지 확인 (|로 시작하거나 포함)
+      if (trimmedLine.includes('|') && trimmedLine.split('|').length > 2) {
+        // 구분선인지 확인 (--- 또는 :---: 같은 패턴)
+        const isSeparator = /^[\|\s\-:]+$/.test(trimmedLine);
+        
+        if (!isSeparator) {
+          if (!inTable) {
+            inTable = true;
+            currentTable = [];
+          }
+          currentTable.push(line); // 원본 줄 유지 (공백 포함)
+        }
+        // 구분선은 무시
+      } else {
+        // 테이블이 끝남
+        if (inTable && currentTable.length > 0) {
+          // 테이블을 HTML로 변환
+          const htmlTable = convertTableToHTML(currentTable);
+          result.push({ type: 'table', content: htmlTable, originalLines: currentTable.length });
+          currentTable = [];
+        }
+        inTable = false;
+        result.push({ type: 'text', content: line });
+      }
+    });
+    
+    // 마지막 테이블 처리
+    if (inTable && currentTable.length > 0) {
+      const htmlTable = convertTableToHTML(currentTable);
+      result.push({ type: 'table', content: htmlTable, originalLines: currentTable.length });
+    }
+    
+    // 결과를 문자열로 조합
+    return result.map(item => item.content).join('\n');
+  };
+  
+  // 테이블 배열을 HTML 테이블로 변환하는 헬퍼 함수
+  const convertTableToHTML = (tableLines) => {
+    if (tableLines.length === 0) return '';
+    
+    // 헤더 추출 (첫 번째 줄)
+    const headerLine = tableLines[0].trim();
+    const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+    
+    if (headers.length === 0) return tableLines.join('\n');
+    
+    // 데이터 행 추출 (나머지 줄들)
+    const dataLines = tableLines.slice(1).map(line => line.trim());
+    
+    // HTML 테이블 생성
+    let htmlTable = '<div class="overflow-x-auto my-4"><table class="min-w-full border-collapse border border-gray-300 text-sm">';
+    
+    // 헤더
+    htmlTable += '<thead><tr class="bg-gray-100">';
+    headers.forEach(header => {
+      htmlTable += `<th class="border border-gray-300 px-3 py-2 text-left font-semibold text-gray-700">${header}</th>`;
+    });
+    htmlTable += '</tr></thead>';
+    
+    // 바디
+    htmlTable += '<tbody>';
+    dataLines.forEach((line, rowIndex) => {
+      const cells = line.split('|').map(c => c.trim()).filter(c => c);
+      if (cells.length > 0) {
+        htmlTable += `<tr class="${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">`;
+        cells.forEach((cell) => {
+          // 숫자 정렬 (숫자로 시작하거나 숫자와 콤마, 마이너스 포함)
+          const isNumeric = /^-?[\d,]+/.test(cell.trim());
+          const alignClass = isNumeric ? 'text-right' : 'text-left';
+          htmlTable += `<td class="border border-gray-300 px-3 py-2 ${alignClass} text-gray-800">${cell}</td>`;
+        });
+        htmlTable += '</tr>';
+      }
+    });
+    htmlTable += '</tbody></table></div>';
+    
+    return htmlTable;
+  };
+
+  // 메시지 텍스트를 렌더링하는 함수 (테이블 변환 포함)
+  const renderMessageText = (text, isNerpMode = false) => {
+    if (!isNerpMode) {
+      return <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
+    }
+    
+    // 세금계산서 발행 모드일 때는 테이블 변환 적용
+    const processedText = parseMarkdownTable(text);
+    
+    // HTML이 포함되어 있는지 확인
+    if (processedText.includes('<table')) {
+      return <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: processedText }} />;
+    }
+    
+    return <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -531,7 +637,7 @@ function AiLlmPage() {
       const welcomeMessage = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: `안녕하세요! AI 어시스턴트입니다. ${selectedTool === 'chatbot' ? '챗봇 모드' : '임베딩 검색 모드'}로 도움을 드리겠습니다. 무엇을 도와드릴까요?`,
+        text: `안녕하세요! AI 어시스턴트입니다. ${selectedTool === 'chatbot' ? '챗봇 모드' : selectedTool === 'embed' ? '임베딩 검색 모드' : selectedTool === 'gitagent' ? 'Git Agent 모드' : '세금계산서 발행 모드'}로 도움을 드리겠습니다. 무엇을 도와드릴까요?`,
       };
       setMessages([welcomeMessage]);
       setHasStarted(true);
@@ -676,13 +782,30 @@ function AiLlmPage() {
             responseText = `[이미지 검색 결과: ${infoParts.join(', ')}]\n\n${responseText}`;
           }
         }
-      } else {
-        // embed 응답 처리
+      } else if (selectedTool === 'embed' || selectedTool === 'nerp') {
+        // embed 또는 nerp 응답 처리
         if (withAnswer && data.answer) {
           // with_answer=true일 때는 AI 답변만 표시
           responseText = data.answer;
         } else if (data.evidence && data.evidence.length > 0) {
           // with_answer=false일 때는 검색 결과 표시
+          responseText = `🔍 검색 결과 (${data.evidence.length}개):\n\n`;
+          data.evidence.forEach((item, index) => {
+            responseText += `**${item.rank}.** ${item.snippet || '내용 없음'}\n`;
+            responseText += `   📊 유사도: ${(item.score * 100).toFixed(1)}%\n`;
+            if (item.source_label) {
+              responseText += `   📁 출처: ${item.source_label}\n`;
+            }
+            responseText += '\n';
+          });
+        } else {
+          responseText = '❌ 검색 결과가 없습니다. 다른 키워드로 시도해보세요.';
+        }
+      } else {
+        // gitagent 응답 처리
+        if (withAnswer && data.answer) {
+          responseText = data.answer;
+        } else if (data.evidence && data.evidence.length > 0) {
           responseText = `🔍 검색 결과 (${data.evidence.length}개):\n\n`;
           data.evidence.forEach((item, index) => {
             responseText += `**${item.rank}.** ${item.snippet || '내용 없음'}\n`;
@@ -919,7 +1042,7 @@ function AiLlmPage() {
               <div>
                 <h2 className="font-bold text-lg text-gray-800">AI Assistant</h2>
                 <p className="text-sm text-gray-500">
-                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : 'Git Agent 모드'}
+                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : selectedTool === 'gitagent' ? 'Git Agent 모드' : '세금계산서 발행 모드'}
                 </p>
               </div>
               <div className="relative dropdown-container">
@@ -928,7 +1051,7 @@ function AiLlmPage() {
                   className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
                 >
                   <FileUp size={16} />
-                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : 'Git Agent 모드'}
+                  {selectedTool === 'chatbot' ? '탄소배출량 모드' : selectedTool === 'embed' ? 'RAG 검색 모드' : selectedTool === 'gitagent' ? 'Git Agent 모드' : '세금계산서 발행 모드'}
                   <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -1001,9 +1124,36 @@ function AiLlmPage() {
                           </div>
                         </div>
                       </div>
+                      
+                      <div
+                        onClick={() => {
+                          setSelectedTool('nerp');
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedTool === 'nerp'
+                            ? 'bg-blue-50 border border-blue-200'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <svg className="text-orange-600" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                              <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-800 text-sm">세금계산서 발행</h4>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
-                    {(selectedTool === 'embed' || selectedTool === 'gitagent') && (
+                    {(selectedTool === 'embed' || selectedTool === 'gitagent' || selectedTool === 'nerp') && (
                       <div className="p-3 border-t border-gray-200 bg-gray-50">
                         <label className="flex items-center gap-2 text-sm text-gray-700">
                           <input
@@ -1019,6 +1169,10 @@ function AiLlmPage() {
                             ? (withAnswer 
                                 ? "GitHub 소스코드를 분석하여 AI가 최종 답변을 생성합니다" 
                                 : "검색된 소스코드 목록만 표시합니다")
+                            : selectedTool === 'nerp'
+                            ? (withAnswer 
+                                ? "세금계산서 발행 정보를 바탕으로 AI가 최종 답변을 생성합니다" 
+                                : "검색 결과 목록만 표시합니다")
                             : (withAnswer 
                                 ? "검색된 문서를 바탕으로 AI가 최종 답변을 생성합니다" 
                                 : "검색 결과 목록만 표시합니다")
@@ -1040,7 +1194,13 @@ function AiLlmPage() {
                     <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${msg.sender === 'user' ? 'bg-[#3B86F6] text-white' : 'bg-gray-200 text-gray-700'}`}>
                       {msg.sender === 'user' ? <User size={20} /> : <Bot size={20} />}
                     </div>
-                    <div className={`max-w-[85%] sm:max-w-xl p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
+                    <div className={`${
+                      msg.sender === 'user' 
+                        ? 'max-w-[85%] sm:max-w-xl' 
+                        : selectedTool === 'nerp' 
+                          ? 'max-w-[98%] sm:max-w-6xl' 
+                          : 'max-w-[85%] sm:max-w-xl'
+                    } p-4 rounded-2xl ${msg.sender === 'user' ? 'bg-gradient-to-br from-[#3B86F6] to-blue-600 text-white rounded-br-none' : 'bg-white shadow-sm border border-gray-200/80 text-gray-800 rounded-bl-none'}`}>
                       {msg.isThinking ? (
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-gray-600">{thinkingMessages[currentThinkingMessage]}</span>
@@ -1061,7 +1221,10 @@ function AiLlmPage() {
                               />
                             </div>
                           )}
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          {msg.sender === 'bot' && selectedTool === 'nerp' 
+                            ? renderMessageText(msg.text, true)
+                            : <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                          }
                         </>
                       )}
                       {msg.responseTime && (

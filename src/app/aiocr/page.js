@@ -105,6 +105,7 @@ function AiOcrPage() {
           setCurrentSessionId(null);
           setExtractedText('');
           setExtractedTable('');
+          setQuoteData([]);
         }
       }
     } catch (error) {
@@ -118,6 +119,19 @@ function AiOcrPage() {
     setExtractedText(work.extractedText);
     setExtractedTable(work.extractedTable);
     setSelectedTool(work.tool);
+    
+    // 견적서 모드인 경우 quoteData 복원
+    if (work.tool === 'quote') {
+      try {
+        const parsedData = JSON.parse(work.extractedText);
+        setQuoteData(parsedData);
+      } catch (e) {
+        setQuoteData([]);
+        console.error('견적서 데이터 파싱 실패:', e);
+      }
+    } else {
+      setQuoteData([]);
+    }
   };
 
   // 새 작업 시작
@@ -126,6 +140,7 @@ function AiOcrPage() {
     setExtractedText('');
     setExtractedTable('');
     setFile(null);
+    setQuoteData([]);
   };
 
   // 날짜 포맷팅 함수
@@ -152,6 +167,7 @@ function AiOcrPage() {
     setExtractedText('');
     setExtractedTable('');
     setFile(null);
+    setQuoteData([]);
     
     if (session) {
       fetchOcrHistory();
@@ -178,6 +194,7 @@ function AiOcrPage() {
       setFile(acceptedFiles[0]);
       setExtractedText('');
       setExtractedTable('');
+      setQuoteData([]);
     }
   }, []);
 
@@ -194,6 +211,7 @@ function AiOcrPage() {
     setFile(null);
     setExtractedText('');
     setExtractedTable('');
+    setQuoteData([]);
   };
 
   // 텍스트 결과 다운로드
@@ -379,6 +397,7 @@ function AiOcrPage() {
                         setCurrentSessionId(null);
                         setExtractedText('');
                         setExtractedTable('');
+                        setQuoteData([]);
                       }
                     } catch (e) {
                       console.error('Error clearing OCR history:', e);

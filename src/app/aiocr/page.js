@@ -18,8 +18,9 @@ function AiOcrPage() {
   const [extractedText, setExtractedText] = useState('');
   const [extractedTable, setExtractedTable] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState('pdf'); // 'pdf' or 'img'
+  const [selectedTool, setSelectedTool] = useState('pdf'); // 'pdf', 'img', or 'quote'
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [quoteData, setQuoteData] = useState([]); // 견적서 추출 데이터
 
   // 작업 이력 관리 상태
   const [ocrHistory, setOcrHistory] = useState([]);
@@ -227,72 +228,128 @@ function AiOcrPage() {
     setIsLoading(true);
     
     try {
-      // 1. 파일 업로드 서버로 파일 업로드
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const directUploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE; // e.g., https://upload.example.com
-      const uploadEndpoint = directUploadBase ? `${directUploadBase.replace(/\/$/, '')}/upload` : '/api/file-upload';
-      
-      const uploadResponse = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!uploadResponse.ok) {
-        let detail = '';
-        try { detail = await uploadResponse.text(); } catch {}
-        throw new Error(`파일 업로드 실패${detail ? `: ${detail}` : ''}`);
+      // 견적서 추출 모드
+      if (selectedTool === 'quote') {
+        // 파일을 base64로 변환
+        const fileToBase64 = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+              // data:image/png;base64, 부분 제거
+              const base64String = reader.result.split(',')[1];
+              resolve(base64String);
+            };
+            reader.onerror = (error) => reject(error);
+          });
+        };
+
+        const base64Data = await fileToBase64(file);
+        
+        // 서버에 POST 요청
+        const requestBody = [
+          {
+            filename: file.name,
+            data: base64Data
+          }
+        ];
+
+        console.log('견적서 추출 요청 시작:', file.name);
+
+        // API 라우트를 통해 프록시 (CORS 회피)
+        const quoteResponse = await fetch('/api/quote-extract', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!quoteResponse.ok) {
+          throw new Error('견적서 추출 실패');
+        }
+
+        const quoteResult = await quoteResponse.json();
+        console.log('견적서 추출 결과:', quoteResult);
+
+        setQuoteData(quoteResult);
+        setExtractedText(JSON.stringify(quoteResult, null, 2));
+        setExtractedTable('');
+
+        // 결과 저장
+        await saveOcrResult(file.name, 'quote', JSON.stringify(quoteResult, null, 2), '');
+
+      } else {
+        // 기존 PDF/IMG OCR 모드
+        // 1. 파일 업로드 서버로 파일 업로드
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const directUploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE; // e.g., https://upload.example.com
+        const uploadEndpoint = directUploadBase ? `${directUploadBase.replace(/\/$/, '')}/upload` : '/api/file-upload';
+        
+        const uploadResponse = await fetch(uploadEndpoint, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadResponse.ok) {
+          let detail = '';
+          try { detail = await uploadResponse.text(); } catch {}
+          throw new Error(`파일 업로드 실패${detail ? `: ${detail}` : ''}`);
+        }
+        
+        const uploadResult = await uploadResponse.json();
+        
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.message || uploadResult.error || '파일 업로드 실패');
+        }
+        
+        console.log('파일 업로드 성공:', uploadResult.file);
+        
+        // 2. OCR 실행
+        const ocrRequestBody = {
+          filename: uploadResult.file.savedName,
+          tool: selectedTool,
+          filePath: uploadResult.file.path
+        };
+        
+        console.log('OCR 요청 시작:', ocrRequestBody);
+        
+        const ocrResponse = await fetch('/api/ocrmcp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(ocrRequestBody),
+        });
+        
+        console.log('OCR 응답 상태:', ocrResponse.status);
+        
+        if (!ocrResponse.ok) {
+          throw new Error('OCR 실행 실패');
+        }
+        
+        const result = await ocrResponse.json();
+        console.log('OCR 처리 결과:', result);
+        
+        // 3. 결과 설정
+        const extractedTextResult = result.text || '텍스트 추출 결과가 없습니다.';
+        const extractedTableResult = result.table || '테이블 추출 결과가 없습니다.';
+        
+        setExtractedText(extractedTextResult);
+        setExtractedTable(extractedTableResult);
+        setQuoteData([]);
+        
+        // 4. 결과 저장
+        await saveOcrResult(uploadResult.file.savedName, selectedTool, extractedTextResult, extractedTableResult);
       }
-      
-      const uploadResult = await uploadResponse.json();
-      
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.message || uploadResult.error || '파일 업로드 실패');
-      }
-      
-      console.log('파일 업로드 성공:', uploadResult.file);
-      
-      // 2. OCR 실행
-      const ocrRequestBody = {
-        filename: uploadResult.file.savedName,
-        tool: selectedTool,
-        filePath: uploadResult.file.path
-      };
-      
-      console.log('OCR 요청 시작:', ocrRequestBody);
-      
-      const ocrResponse = await fetch('/api/ocrmcp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(ocrRequestBody),
-      });
-      
-      console.log('OCR 응답 상태:', ocrResponse.status);
-      
-      if (!ocrResponse.ok) {
-        throw new Error('OCR 실행 실패');
-      }
-      
-      const result = await ocrResponse.json();
-      console.log('OCR 처리 결과:', result);
-      
-      // 3. 결과 설정
-      const extractedTextResult = result.text || '텍스트 추출 결과가 없습니다.';
-      const extractedTableResult = result.table || '테이블 추출 결과가 없습니다.';
-      
-      setExtractedText(extractedTextResult);
-      setExtractedTable(extractedTableResult);
-      
-      // 4. 결과 저장
-      await saveOcrResult(uploadResult.file.savedName, selectedTool, extractedTextResult, extractedTableResult);
       
     } catch (error) {
       console.error('OCR 처리 중 오류:', error);
       setExtractedText(`오류가 발생했습니다: ${error.message}`);
       setExtractedTable('');
+      setQuoteData([]);
     } finally {
       setIsLoading(false);
     }
@@ -377,9 +434,11 @@ function AiOcrPage() {
                               <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                                 work.tool === 'pdf' 
                                   ? 'bg-blue-100 text-blue-700' 
-                                  : 'bg-green-100 text-green-700'
+                                  : work.tool === 'img'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-orange-100 text-orange-700'
                               }`}>
-                                {work.tool === 'pdf' ? 'PDF' : 'IMG'}
+                                {work.tool === 'pdf' ? 'PDF' : work.tool === 'img' ? 'IMG' : '견적서'}
                               </span>
                               <span className="text-xs text-gray-400">
                                 {formatDate(work.createdAt)}
@@ -424,12 +483,14 @@ function AiOcrPage() {
                 <div className="mb-6 flex justify-between items-center">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">
-                      {selectedTool === 'pdf' ? 'PDF 파서 모드' : '이미지 OCR 모드'}
+                      {selectedTool === 'pdf' ? 'PDF 파서 모드' : selectedTool === 'img' ? '이미지 OCR 모드' : '견적서 추출 모드'}
                     </h2>
                     <p className="text-sm text-gray-500">
                       {selectedTool === 'pdf' 
                         ? 'PDF에서 텍스트와 테이블을 추출합니다' 
-                        : '이미지에서 텍스트를 추출합니다'
+                        : selectedTool === 'img'
+                        ? '이미지에서 텍스트를 추출합니다'
+                        : '견적서에서 정보를 추출합니다'
                       }
                     </p>
                   </div>
@@ -439,7 +500,7 @@ function AiOcrPage() {
                       className="flex items-center gap-2 text-blue-600 border border-[#3B86F6] rounded-lg px-4 py-2 text-sm font-semibold hover:bg-blue-50 transition-colors cursor-pointer"
                     >
                       <FileUp size={16} />
-                      {selectedTool === 'pdf' ? 'PDF Parser 모드' : 'IMG OCR 모드'}
+                      {selectedTool === 'pdf' ? 'PDF Parser 모드' : selectedTool === 'img' ? 'IMG OCR 모드' : '견적서 추출 모드'}
                       <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
@@ -488,6 +549,28 @@ function AiOcrPage() {
                               <div>
                                 <h4 className="font-semibold text-gray-800 text-sm">🖼️ IMG OCR</h4>
                                 <p className="text-xs text-gray-600">이미지에서 텍스트를 추출합니다</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            onClick={() => {
+                              setSelectedTool('quote');
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`p-3 rounded-lg cursor-pointer transition-colors mt-1 ${
+                              selectedTool === 'quote'
+                                ? 'bg-blue-50 border border-blue-200'
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <FileText className="text-orange-600" size={20} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800 text-sm">📋 견적서 추출</h4>
+                                <p className="text-xs text-gray-600">견적서에서 정보를 추출합니다</p>
                               </div>
                             </div>
                           </div>
@@ -552,27 +635,70 @@ function AiOcrPage() {
                 </div>
 
                 {/* 결과 표시 영역 */}
-                {(extractedText || extractedTable) && (
+                {(extractedText || extractedTable || quoteData.length > 0) && (
                   <div className="space-y-6">
+                    {/* 견적서 추출 결과 */}
+                    {selectedTool === 'quote' && quoteData.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-2xl font-bold text-gray-800">📋 견적서 추출 결과</h2>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">품번</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">품목</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">품명</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">규격</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">수량</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">단가</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">금액</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">제조사</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">사이즈</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {quoteData.map((item, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.partNumber || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.itemCategory || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.productName || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.specifications || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.quantity || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.unitPrice || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.totalAmount || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.manufacturer || '-'}</td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">{item.size || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
                     {/* 텍스트 추출 결과 */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl font-bold text-gray-800">📝 텍스트 추출 결과</h2>
-                        <button
-                          onClick={downloadText}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Download size={14} />
-                          텍스트 다운로드
-                        </button>
+                    {selectedTool !== 'quote' && (
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-2xl font-bold text-gray-800">📝 텍스트 추출 결과</h2>
+                          <button
+                            onClick={downloadText}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <Download size={14} />
+                            텍스트 다운로드
+                          </button>
+                        </div>
+                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
+                          <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedText}</pre>
+                        </div>
                       </div>
-                      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[200px]">
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{extractedText}</pre>
-                      </div>
-                    </div>
+                    )}
 
                     {/* 테이블 추출 결과 */}
-                    {extractedTable && (
+                    {selectedTool !== 'quote' && extractedTable && (
                       <div>
                         <div className="flex items-center justify-between mb-4">
                           <h2 className="text-2xl font-bold text-gray-800">📊 테이블 추출 결과</h2>

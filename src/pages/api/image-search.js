@@ -32,11 +32,13 @@ export default async function handler(req, res) {
       try {
         // base64에서 data URL prefix 제거
         const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+        console.log('🔍 Base64 이미지 데이터 길이:', base64Data.length);
         
-        // 방법 1: ImgBB API 사용 (무료, API 키 필요)
+        // 방법 1: ImgBB API 사용 (무료, API 키 필요) - 우선 사용
         const imgbbApiKey = process.env.IMGBB_API_KEY;
         
         if (imgbbApiKey) {
+          console.log('🔍 ImgBB API를 사용하여 이미지 업로드 시도...');
           // ImgBB API 사용 (multipart/form-data)
           const formData = new URLSearchParams();
           formData.append('key', imgbbApiKey);
@@ -54,18 +56,24 @@ export default async function handler(req, res) {
             const imgbbData = await imgbbResponse.json();
             if (imgbbData.success && imgbbData.data && imgbbData.data.url) {
               imageSearchUrl = imgbbData.data.url;
-              console.log('🔍 ImgBB에 이미지 업로드 완료, URL:', imageSearchUrl);
+              console.log('✅ ImgBB에 이미지 업로드 완료, URL:', imageSearchUrl);
             } else {
+              console.error('❌ ImgBB 업로드 실패:', imgbbData);
               throw new Error('ImgBB 업로드 실패: ' + (imgbbData.error?.message || '알 수 없는 오류'));
             }
           } else {
             const errorText = await imgbbResponse.text();
+            console.error('❌ ImgBB API 오류:', imgbbResponse.status, errorText);
             throw new Error(`ImgBB API 오류: ${imgbbResponse.status} - ${errorText}`);
           }
         } else {
           // 방법 2: 기존 업로드 서버 사용 (외부 접근 가능한 경우)
+          console.log('⚠️ IMGBB_API_KEY가 없어 로컬 서버 사용 시도...');
           try {
-            const uploadResponse = await fetch('http://221.139.227.131:8003/upload-base64', {
+            const uploadUrl = 'http://221.139.227.131:8003/upload-base64';
+            console.log('🔍 로컬 서버에 이미지 업로드 시도:', uploadUrl);
+            
+            const uploadResponse = await fetch(uploadUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -80,11 +88,15 @@ export default async function handler(req, res) {
             if (uploadResponse.ok) {
               const uploadData = await uploadResponse.json();
               imageSearchUrl = `http://221.139.227.131:8003/images/${uploadData.file.savedName}`;
-              console.log('🔍 로컬 서버에 이미지 업로드 완료, URL:', imageSearchUrl);
+              console.log('✅ 로컬 서버에 이미지 업로드 완료, URL:', imageSearchUrl);
+              console.log('⚠️ 주의: 이 URL이 외부(Google Lens)에서 접근 가능한지 확인이 필요합니다.');
             } else {
-              throw new Error('로컬 서버 업로드 실패');
+              const errorText = await uploadResponse.text();
+              console.error('❌ 로컬 서버 업로드 실패:', uploadResponse.status, errorText);
+              throw new Error(`로컬 서버 업로드 실패: ${uploadResponse.status} - ${errorText}`);
             }
           } catch (uploadError) {
+            console.error('❌ 로컬 서버 업로드 오류:', uploadError);
             throw new Error('이미지 호스팅 실패. IMGBB_API_KEY를 환경 변수에 추가하거나, 업로드 서버가 외부에서 접근 가능한지 확인해주세요.');
           }
         }
@@ -115,6 +127,7 @@ export default async function handler(req, res) {
     // 이미지 URL 접근 가능 여부 확인 (Google Lens가 접근할 수 있어야 함)
     let imageAccessible = false;
     try {
+      console.log('🔍 이미지 URL 접근 가능 여부 확인:', imageSearchUrl);
       const imageCheckResponse = await fetch(imageSearchUrl, { 
         method: 'HEAD',
         headers: {
@@ -123,12 +136,20 @@ export default async function handler(req, res) {
       });
       if (imageCheckResponse.ok) {
         imageAccessible = true;
-        console.log('✅ 이미지 URL 접근 가능 확인됨 (Content-Type:', imageCheckResponse.headers.get('content-type'), ')');
+        const contentType = imageCheckResponse.headers.get('content-type');
+        console.log('✅ 이미지 URL 접근 가능 확인됨 (Content-Type:', contentType, ')');
       } else {
-        console.warn('⚠️ 이미지 URL 접근 확인 실패:', imageCheckResponse.status);
+        console.warn('⚠️ 이미지 URL 접근 확인 실패:', imageCheckResponse.status, imageCheckResponse.statusText);
+        console.warn('⚠️ Google Lens가 이 URL에 접근하지 못할 수 있습니다.');
       }
     } catch (error) {
       console.warn('⚠️ 이미지 URL 접근 확인 중 오류:', error.message);
+      console.warn('⚠️ Google Lens가 이 URL에 접근하지 못할 수 있습니다.');
+    }
+    
+    if (!imageAccessible) {
+      console.warn('⚠️ 이미지 URL이 접근 불가능합니다. Google Lens 검색이 실패할 수 있습니다.');
+      console.warn('⚠️ 해결 방법: IMGBB_API_KEY를 설정하여 공개 이미지 호스팅 서비스를 사용하세요.');
     }
 
     // SerpAPI Google Lens API 호출 (재시도 로직 포함)
@@ -235,33 +256,33 @@ export default async function handler(req, res) {
       console.log('🔍 SerpAPI 응답 구조:', responsePreview);
     }
 
-    // 검색 결과에서 제품명, 제조사, 사이즈 추출
-    const extractedData = extractProductInfoFromSerpAPIResults(searchData);
-
     // 검색 결과 수집 (visual_matches, exact_matches, inline_images 등)
     const allSearchResults = [
       ...(searchData.exact_matches || []),
       ...(searchData.visual_matches || []),
       ...(searchData.inline_images || [])
-    ].slice(0, 10);
+    ].slice(0, 3); // 상위 3개만
+
+    // 검색 결과를 텍스트로 변환
+    const searchResultsText = allSearchResults.map((result, index) => {
+      const title = result.title || '';
+      const source = result.source || '';
+      const link = result.link || '';
+      return `${index + 1}. ${title}${source ? ` (${source})` : ''}${link ? ` - ${link}` : ''}`;
+    }).join('\n');
 
     return res.status(200).json({
       success: true,
-      productName: extractedData.productName,
-      manufacturer: extractedData.manufacturer,
-      size: extractedData.size,
-      formatted: extractedData, // 구조화된 전체 데이터
       searchQuery: imageSearchUrl,
       searchResults: allSearchResults,
+      searchResultsText: searchResultsText, // 텍스트 형태의 검색 결과
       rawData: {
         hasKnowledgeGraph: !!searchData.knowledge_graph,
         visualMatchesCount: searchData.visual_matches?.length || 0,
         exactMatchesCount: searchData.exact_matches?.length || 0,
         inlineImagesCount: searchData.inline_images?.length || 0
       },
-      message: extractedData.productName 
-        ? `제품명: ${extractedData.productName}${extractedData.manufacturer ? `, 제조사: ${extractedData.manufacturer}` : ''}${extractedData.size ? `, 사이즈: ${extractedData.size}` : ''}`
-        : '제품명을 찾을 수 없습니다.'
+      message: searchResultsText || '검색 결과를 찾을 수 없습니다.'
     });
 
   } catch (error) {
@@ -273,205 +294,3 @@ export default async function handler(req, res) {
   }
 }
 
-// SerpAPI 검색 결과에서 제품명, 제조사, 사이즈 추출 (구조화된 데이터)
-function extractProductInfoFromSerpAPIResults(searchData) {
-  console.log('🔍 제품 정보 추출 시작, 응답 키:', Object.keys(searchData));
-  
-  let rawTitle = null;
-  
-  // 1. Knowledge Graph에서 제품명 추출 (가장 신뢰도 높음)
-  if (searchData.knowledge_graph) {
-    console.log('🔍 Knowledge Graph 데이터:', JSON.stringify(searchData.knowledge_graph, null, 2));
-    const kg = searchData.knowledge_graph;
-    
-    if (kg.title) {
-      rawTitle = kg.title;
-      console.log('✅ Knowledge Graph title:', rawTitle);
-    } else if (kg.subtitle) {
-      rawTitle = kg.subtitle;
-      console.log('✅ Knowledge Graph subtitle:', rawTitle);
-    }
-  }
-
-  // 2. Exact Matches에서 제품명 추출
-  if (!rawTitle && searchData.exact_matches && Array.isArray(searchData.exact_matches) && searchData.exact_matches.length > 0) {
-    console.log('🔍 Exact Matches 개수:', searchData.exact_matches.length);
-    for (const match of searchData.exact_matches.slice(0, 5)) {
-      if (match.title) {
-        rawTitle = match.title;
-        console.log('✅ Exact Match title:', rawTitle);
-        break;
-      }
-    }
-  }
-
-  // 3. Visual Matches에서 제품명 추출
-  if (!rawTitle && searchData.visual_matches && Array.isArray(searchData.visual_matches) && searchData.visual_matches.length > 0) {
-    console.log('🔍 Visual Matches 개수:', searchData.visual_matches.length);
-    
-    // 한글이 포함된 title 우선 찾기
-    for (const match of searchData.visual_matches.slice(0, 10)) {
-      if (match.title && /[가-힣]/.test(match.title)) {
-        rawTitle = match.title;
-        console.log('✅ Visual Match 한글 title:', rawTitle);
-        break;
-      }
-    }
-    
-    // 한글이 없어도 첫 번째 title 사용
-    if (!rawTitle && searchData.visual_matches[0]?.title) {
-      rawTitle = searchData.visual_matches[0].title;
-      console.log('✅ Visual Match title:', rawTitle);
-    }
-  }
-
-  // 4. Reverse Image Search 결과에서 제품명 추출
-  if (!rawTitle && searchData.reverse_image_search?.title) {
-    rawTitle = searchData.reverse_image_search.title;
-    console.log('✅ Reverse Image Search title:', rawTitle);
-  }
-
-  // 5. Inline Images에서 제품명 추출
-  if (!rawTitle && searchData.inline_images && Array.isArray(searchData.inline_images) && searchData.inline_images.length > 0) {
-    for (const image of searchData.inline_images.slice(0, 5)) {
-      if (image.title) {
-        rawTitle = image.title;
-        console.log('✅ Inline Image title:', rawTitle);
-        break;
-      }
-    }
-  }
-
-  // 6. Related Searches에서 제품명 추출
-  if (!rawTitle && searchData.related_searches && Array.isArray(searchData.related_searches) && searchData.related_searches.length > 0) {
-    for (const search of searchData.related_searches.slice(0, 5)) {
-      if (search.query && /[가-힣]/.test(search.query)) {
-        rawTitle = search.query;
-        console.log('✅ Related Search query:', rawTitle);
-        break;
-      }
-    }
-  }
-
-  // 7. Organic Results에서 제품명 추출
-  if (!rawTitle && searchData.organic_results && Array.isArray(searchData.organic_results) && searchData.organic_results.length > 0) {
-    for (const result of searchData.organic_results.slice(0, 5)) {
-      if (result.title && /[가-힣]/.test(result.title)) {
-        rawTitle = result.title;
-        console.log('✅ Organic Result title:', rawTitle);
-        break;
-      }
-    }
-  }
-
-  // rawTitle에서 제품명, 제조사, 사이즈 파싱
-  if (rawTitle) {
-    const parsed = parseProductInfo(rawTitle);
-    console.log('✅ 파싱된 제품 정보:', parsed);
-    return parsed;
-  }
-
-  console.log('❌ 제품명을 찾을 수 없음');
-  return { productName: null, manufacturer: null, size: null };
-}
-
-// 제목 텍스트에서 제품명, 제조사, 사이즈 추출
-function parseProductInfo(title) {
-  if (!title) {
-    return { productName: null, manufacturer: null, size: null };
-  }
-
-  let productName = null;
-  let manufacturer = null;
-  let size = null;
-
-  // 예: "알루미늄 프로파일 2020 (100mm): 다나와 가격비교"
-  // 예: "Coca-Cola 코카콜라 350ml"
-  // 예: "삼성 갤럭시 S24 울트라 512GB"
-
-  // 1. 사이즈 추출 (숫자 + 단위 패턴)
-  const sizePatterns = [
-    /(\d+(?:\.\d+)?\s*(?:mm|cm|m|ml|L|g|kg|GB|TB|인치|inch|oz|lb))/gi,
-    /\((\d+(?:\s*x\s*\d+)?(?:\s*mm|\s*cm|\s*m)?)\)/gi, // (100mm), (20x20mm)
-    /(\d{4})/g, // 2020, 2024 같은 연도나 모델 번호
-  ];
-
-  for (const pattern of sizePatterns) {
-    const match = title.match(pattern);
-    if (match && match[0]) {
-      size = match[0].trim();
-      break;
-    }
-  }
-
-  // 2. 제조사 추출 (영문 대문자로 시작하는 브랜드명)
-  const manufacturerPatterns = [
-    /([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)/g, // Coca-Cola, Samsung Galaxy
-    /([가-힣]+(?:\s+[가-힣]+)*)\s+(?:제조|제작|브랜드|회사)/g, // 한국어 제조사
-  ];
-
-  for (const pattern of manufacturerPatterns) {
-    const matches = title.matchAll(pattern);
-    for (const match of matches) {
-      const candidate = match[1].trim();
-      // 일반적인 단어 제외
-      if (!['The', 'And', 'For', 'With', 'From', 'This', 'That'].includes(candidate)) {
-        manufacturer = candidate;
-        break;
-      }
-    }
-    if (manufacturer) break;
-  }
-
-  // 3. 제품명 추출
-  // 사이즈와 제조사를 제거한 나머지 텍스트에서 제품명 추출
-  let cleanedTitle = title;
-  
-  // 사이즈 제거
-  if (size) {
-    cleanedTitle = cleanedTitle.replace(new RegExp(size.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
-  }
-  
-  // 제조사 제거
-  if (manufacturer) {
-    cleanedTitle = cleanedTitle.replace(new RegExp(manufacturer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
-  }
-  
-  // 불필요한 문자 제거 (:, -, 다나와, 가격비교 등)
-  cleanedTitle = cleanedTitle
-    .replace(/[:：]\s*[^:：]*$/g, '') // 콜론 이후 제거
-    .replace(/\s*[-–—]\s*[^-–—]*$/g, '') // 하이픈 이후 제거
-    .replace(/\s*(다나와|가격비교|구매|판매|쇼핑|온라인|몰|스토어).*$/gi, '') // 불필요한 단어 제거
-    .replace(/\s+/g, ' ') // 여러 공백을 하나로
-    .trim();
-
-  // 한글이 포함된 경우 우선 사용
-  if (/[가-힣]/.test(cleanedTitle)) {
-    // 한글 단어 추출 (2자 이상)
-    const koreanWords = cleanedTitle.match(/[가-힣]{2,}/g);
-    if (koreanWords && koreanWords.length > 0) {
-      productName = koreanWords.join(' ');
-    } else {
-      productName = cleanedTitle;
-    }
-  } else {
-    // 영문인 경우 첫 번째 단어 조합
-    const words = cleanedTitle.split(/\s+/).filter(w => w.length > 1);
-    if (words.length > 0) {
-      productName = words.slice(0, 3).join(' '); // 최대 3단어
-    } else {
-      productName = cleanedTitle;
-    }
-  }
-
-  // 제품명이 너무 짧거나 의미없는 경우 원본 제목 사용
-  if (!productName || productName.length < 2) {
-    productName = title.split(/[:：\-–—]/)[0].trim(); // 첫 번째 부분만
-  }
-
-  return {
-    productName: productName || null,
-    manufacturer: manufacturer || null,
-    size: size || null
-  };
-}

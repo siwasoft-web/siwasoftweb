@@ -344,9 +344,198 @@ function AiLlmPage() {
     return htmlTable;
   };
 
+  // 출처 텍스트를 클릭 가능한 링크로 변환하는 함수
+  const renderSourceLinks = (text, evidence = []) => {
+    if (!text) {
+      return text;
+    }
+
+    // [출처: ...] 패턴 찾기
+    const sourcePattern = /\[출처:\s*([^\]]+)\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = sourcePattern.exec(text)) !== null) {
+      // 매치 이전 텍스트 추가
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      let sourceText = match[1].trim();
+      
+      // 디버깅: 출처 텍스트와 evidence 로그
+      console.log('🔍 원본 출처 텍스트:', sourceText);
+      console.log('📚 Evidence:', evidence);
+      
+      // 컬렉션 이름 제거: [docs agent], [collection_name] 등 (앞뒤 모두)
+      // "[docs agent] WorkBuilder 사용자 매뉴얼 - p.4" -> "WorkBuilder 사용자 매뉴얼 - p.4"
+      // "[docs agent]. WorkBuilder 사용자 매뉴얼 p.5" -> "WorkBuilder 사용자 매뉴얼 p.5"
+      sourceText = sourceText
+        .replace(/^\[[^\]]+\]\s*\.?\s*/g, '') // 앞의 [docs agent]. 제거
+        .replace(/\s*\[[^\]]+\]\s*/g, ' ') // 중간이나 뒤의 [docs agent] 제거
+        .trim();
+      console.log('🔍 컬렉션 이름 제거 후:', sourceText);
+      
+      // 출처 텍스트에서 PDF 이름과 페이지 번호 추출
+      // 형식: "WorkBuilder 사용자 매뉴얼 - p.4", "WorkBuilder 사용자 매뉴얼 p.5, p.7", "WorkBuilder 사용자 매뉴얼ㆍ p.96" 등
+      let pdfName = null;
+      let pageNum = null;
+      
+      // 페이지 번호 추출 (다양한 형식 지원, 첫 번째 페이지 번호만 사용)
+      // - p.4, p.5, p.7, ㆍ p.96, p.21 등
+      // 여러 페이지가 있으면 첫 번째만 사용: "p.5, p.7" -> 5
+      const pageMatch = sourceText.match(/[-\sㆍ·]\s*p\.(\d+)/i) || 
+                       sourceText.match(/,\s*p\.(\d+)/i) ||
+                       sourceText.match(/\sp\.(\d+)/i);
+      if (pageMatch) {
+        pageNum = parseInt(pageMatch[1], 10);
+        console.log('📄 출처 텍스트에서 페이지 번호 추출:', pageNum);
+      }
+      
+      // PDF 이름 추출 (페이지 번호 부분 제거)
+      // "WorkBuilder 사용자 매뉴얼 - p.4" -> "WorkBuilder 사용자 매뉴얼"
+      // "WorkBuilder 사용자 매뉴얼 p.5, p.7" -> "WorkBuilder 사용자 매뉴얼"
+      let pdfNameText = sourceText
+        .replace(/[-\sㆍ·]\s*p\.\d+/gi, '') // - p.4, ㆍ p.96 제거
+        .replace(/,\s*p\.\d+/gi, '') // , p.7 제거
+        .replace(/\s+p\.\d+/gi, '') // p.5 제거
+        .replace(/\s*-\s*$/, '') // 끝의 - 제거
+        .replace(/\s*,\s*$/, '') // 끝의 , 제거
+        .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+        .trim();
+      
+      console.log('📄 추출된 PDF 이름:', pdfNameText, '페이지 번호:', pageNum);
+      
+      // evidence에서 매칭되는 항목 찾기 (유연한 매칭)
+      let evidenceItem = null;
+      
+      if (evidence && evidence.length > 0) {
+        // 1. 정확한 source_label 매칭 시도
+        evidenceItem = evidence.find(item => item.source_label === sourceText);
+        
+        // 2. PDF 이름과 페이지로 매칭 시도 (페이지 번호가 있으면 우선)
+        if (!evidenceItem && pdfNameText && pageNum) {
+          evidenceItem = evidence.find(item => {
+            const itemPdfName = item.pdf_name || item.meta?.pdf_name;
+            const itemPage = item.page || item.meta?.page;
+            
+            // PDF 이름이 포함되어 있고, 페이지가 일치하는 경우
+            if (itemPdfName && (pdfNameText.includes(itemPdfName) || itemPdfName.includes(pdfNameText))) {
+              if (itemPage) {
+                return itemPage === pageNum;
+              }
+            }
+            return false;
+          });
+        }
+        
+        // 3. PDF 이름만으로 매칭 시도 (페이지 번호가 없거나 위에서 매칭 실패한 경우)
+        if (!evidenceItem && pdfNameText) {
+          evidenceItem = evidence.find(item => {
+            const itemPdfName = item.pdf_name || item.meta?.pdf_name;
+            if (itemPdfName) {
+              // 양방향 포함 검사
+              return pdfNameText.includes(itemPdfName) || itemPdfName.includes(pdfNameText);
+            }
+            return false;
+          });
+        }
+        
+        // 4. source_label에 PDF 이름이 포함된 경우
+        if (!evidenceItem && pdfNameText) {
+          evidenceItem = evidence.find(item => {
+            const sourceLabel = item.source_label || '';
+            return sourceLabel.includes(pdfNameText) || pdfNameText.includes(sourceLabel);
+          });
+        }
+      }
+      
+      // PDF 정보가 있으면 링크 생성
+      if (evidenceItem) {
+        const foundPdfName = evidenceItem.pdf_name || evidenceItem.meta?.pdf_name;
+        // 출처 텍스트에서 직접 추출한 페이지 번호를 우선 사용 (가장 정확함)
+        // evidence의 페이지 번호는 fallback으로만 사용
+        const foundPage = pageNum || evidenceItem.page || evidenceItem.meta?.page;
+        
+        console.log('✅ Evidence 매칭 성공:', { 
+          foundPdfName, 
+          foundPage, 
+          pageNumFromText: pageNum,
+          pageNumFromEvidence: evidenceItem.page || evidenceItem.meta?.page
+        });
+        
+        if (foundPdfName) {
+          const pdfUrl = `/pdf-viewer?pdf_name=${encodeURIComponent(foundPdfName)}${foundPage ? `&page=${foundPage}` : ''}`;
+          console.log('🔗 PDF URL:', pdfUrl);
+          parts.push(
+            <a
+              key={match.index}
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(pdfUrl, '_blank', 'width=1200,height=800');
+              }}
+            >
+              {match[0]}
+            </a>
+          );
+        } else {
+          console.warn('⚠️ Evidence에 PDF 이름이 없음');
+          // PDF 이름이 없으면 원본 텍스트 유지
+          parts.push(match[0]);
+        }
+      } else {
+        // evidence를 찾지 못한 경우, 출처 텍스트에서 직접 PDF 이름 추출 시도
+        // 예: "WorkBuilder 사용자 매뉴얼" -> "WorkBuilder 사용자 매뉴얼"
+        console.log('⚠️ Evidence 매칭 실패, 출처 텍스트에서 직접 추출 시도:', pdfNameText);
+        if (pdfNameText) {
+          const pdfUrl = `/pdf-viewer?pdf_name=${encodeURIComponent(pdfNameText)}${pageNum ? `&page=${pageNum}` : ''}`;
+          console.log('🔗 PDF URL (직접 추출):', pdfUrl);
+          parts.push(
+            <a
+              key={match.index}
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(pdfUrl, '_blank', 'width=1200,height=800');
+              }}
+            >
+              {match[0]}
+            </a>
+          );
+        } else {
+          console.warn('❌ PDF 이름 추출 실패');
+          // 매칭 실패 시 원본 텍스트 유지
+          parts.push(match[0]);
+        }
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // 마지막 부분 추가
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
   // 메시지 텍스트를 렌더링하는 함수 (테이블 변환 포함)
-  const renderMessageText = (text, isNerpMode = false) => {
+  const renderMessageText = (text, isNerpMode = false, evidence = []) => {
     if (!isNerpMode) {
+      // 출처 링크 변환 적용
+      const textWithLinks = renderSourceLinks(text, evidence);
+      if (Array.isArray(textWithLinks)) {
+        return <p className="text-sm leading-relaxed whitespace-pre-wrap">{textWithLinks}</p>;
+      }
       return <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>;
     }
     
@@ -717,8 +906,8 @@ function AiLlmPage() {
     }
   };
 
-  // 이미지 검색으로 제품명, 제조사, 사이즈 추출
-  const searchImageForProductName = async (imageBase64) => {
+  // 이미지 검색으로 검색 결과 텍스트 추출
+  const searchImageForText = async (imageBase64) => {
     try {
       console.log('🔍 이미지 검색 시작...');
       const response = await fetch('/api/image-search', {
@@ -737,9 +926,16 @@ function AiLlmPage() {
       const data = await response.json();
       console.log('이미지 검색 결과:', data);
       
-      if (data.success && data.formatted) {
-        // 구조화된 데이터 반환 (제품명, 제조사, 사이즈)
-        return data.formatted;
+      if (data.success && data.searchResultsText) {
+        // 검색 결과 텍스트 반환
+        return data.searchResultsText;
+      }
+      
+      // 이미지 검색 실패 시 로그 출력
+      if (!data.success) {
+        console.warn('⚠️ 이미지 검색 실패:', data.message || '알 수 없는 오류');
+      } else if (data.success && !data.searchResultsText) {
+        console.warn('⚠️ 이미지 검색 결과가 없습니다.');
       }
       
       return null;
@@ -765,81 +961,37 @@ function AiLlmPage() {
       }
     }
 
-    // 이미지가 있으면 텍스트 추출 및 이미지 검색
+    // 이미지가 있으면 SERP API로 이미지 검색하여 검색 결과 텍스트 추출
     let extractedText = '';
-    let extractedData = null;
-    let searchedProductInfo = null; // 이미지 검색으로 추출된 제품 정보 (제품명, 제조사, 사이즈)
+    let imageSearchFailed = false;
     if (selectedImage && imagePreview) {
-      // 1. Vision API로 텍스트 추출
-      const extractionResult = await extractTextFromImage(imagePreview);
-      // extractedText: 검색에 사용될 텍스트 (예: "Coca-Cola 코카콜라 350 ml")
-      // - Vision API에서 제조사, 제품명, 사이즈만 추출하여 공백으로 조합한 것
-      // - "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
-      extractedText = extractionResult.extractedText || '';
-      // extractedData: 화면 표시용 구조화된 데이터 (제품명, 제조사, 사이즈를 분리)
-      extractedData = extractionResult.formatted || null;
-      setExtractedImageText(extractedText);
-      setExtractedImageData(extractedData);
-      
-      // 2. 이미지 검색으로 제품 정보 추출 (탄소배출량 모드일 때만)
+      // SERP API로 이미지 검색하여 검색 결과 텍스트 추출 (탄소배출량 모드일 때만)
       if (selectedTool === 'chatbot') {
-        searchedProductInfo = await searchImageForProductName(imagePreview);
-        console.log('🔍 이미지 검색으로 추출된 제품 정보:', searchedProductInfo);
+        extractedText = await searchImageForText(imagePreview);
+        console.log('🔍 SERP API로 추출된 검색 결과 텍스트:', extractedText);
         
-        // 검색으로 추출된 제품 정보가 있으면 extractedData에 병합
-        if (searchedProductInfo) {
-          if (!extractedData) {
-            extractedData = { productName: '', manufacturer: '', size: '' };
-          }
-          // 검색 결과로 우선 채우기 (없는 필드만)
-          if (searchedProductInfo.productName && !extractedData.productName) {
-            extractedData.productName = searchedProductInfo.productName;
-          }
-          if (searchedProductInfo.manufacturer && !extractedData.manufacturer) {
-            extractedData.manufacturer = searchedProductInfo.manufacturer;
-          }
-          if (searchedProductInfo.size && !extractedData.size) {
-            extractedData.size = searchedProductInfo.size;
-          }
-          setExtractedImageData(extractedData);
-        }
-        
-        // 검색으로 추출된 제품명을 extractedText에 포함 (없는 경우에만)
-        if (searchedProductInfo?.productName && !extractedText.includes(searchedProductInfo.productName)) {
-          const searchText = [
-            searchedProductInfo.productName,
-            searchedProductInfo.manufacturer,
-            searchedProductInfo.size
-          ].filter(Boolean).join(' ');
-          extractedText = [searchText, extractedText].filter(Boolean).join(' ').trim();
+        if (extractedText) {
+          setExtractedImageText(extractedText);
+        } else {
+          imageSearchFailed = true;
+          console.warn('⚠️ 이미지 검색 결과가 없습니다. 사용자 입력 텍스트를 사용합니다.');
         }
       }
-      
-      // 추출 실패 시에도 사용자 입력 텍스트로 검색 가능하도록 함
     }
 
     // ===== 실제 검색 쿼리 구성 =====
-    // 검색에 사용되는 텍스트: 이미지 검색으로 추출된 제품명 + 이미지에서 추출된 텍스트 + 사용자가 입력한 텍스트
-    // 예: "알루미늄 프로파일" (이미지 검색) + "Coca-Cola 코카콜라 350 ml" (Vision API) + "탄소배출량은?" (사용자 입력)
-    // 주의: "[이미지에서 추출된 정보]" 같은 제목이나 "제품명:", "제조사:" 같은 라벨은 포함되지 않음
-    
-    // 이미지 검색으로 제품 정보를 추출했지만 extractedText가 비어있으면, 제품명을 기본 검색 쿼리로 사용
-    let finalExtractedText = extractedText;
-    if (!finalExtractedText && searchedProductInfo?.productName) {
-      finalExtractedText = [
-        searchedProductInfo.productName,
-        searchedProductInfo.manufacturer,
-        searchedProductInfo.size
-      ].filter(Boolean).join(' ');
-      console.log('🔍 이미지 검색으로 추출된 제품 정보를 기본 검색 쿼리로 사용:', finalExtractedText);
-    }
-    
-    const searchQuery = [finalExtractedText, input.trim()].filter(Boolean).join(' ').trim();
+    // 검색에 사용되는 텍스트: SERP API로 추출된 검색 결과 텍스트 또는 사용자 입력
+    const searchQuery = extractedText || input.trim();
     console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
     if (!searchQuery) {
       alert('텍스트를 입력하거나 이미지를 업로드해주세요.\n\n이미지를 업로드했지만 정보가 추출되지 않았다면, 추가로 텍스트를 입력해주세요.');
       return;
+    }
+    
+    // 이미지 검색이 실패했고 사용자 입력도 없으면 경고
+    if (imageSearchFailed && !input.trim()) {
+      console.warn('⚠️ 이미지 검색 실패 및 사용자 입력 없음');
     }
 
     // 첫 메시지 전, 세션 제목을 즉시 업데이트 (ChatGPT 스타일)
@@ -865,56 +1017,10 @@ function AiLlmPage() {
     // 이 텍스트는 화면에만 표시되고, 실제 검색에는 사용되지 않음
     // 검색에는 위의 searchQuery가 사용됨
     let userMessageText = input;
-    console.log('extractedData:', extractedData); // 디버깅용
-    if (selectedImage && extractedData) {
-      // 구조화된 정보를 깔끔하게 포맷팅
-      const infoParts = [];
-      if (extractedData.productName) {
-        infoParts.push(`제품명: ${extractedData.productName}`);
-      }
-      if (extractedData.manufacturer) {
-        infoParts.push(`제조사: ${extractedData.manufacturer}`);
-      }
-      if (extractedData.size) {
-        infoParts.push(`사이즈 또는 규격: ${extractedData.size}`);
-      }
-      
-      if (infoParts.length > 0) {
-        userMessageText = `[이미지에서 추출된 정보]\n${infoParts.join('\n')}${input.trim() ? '\n\n' + input.trim() : ''}`;
-      } else if (extractedText) {
-        userMessageText = `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim();
-      } else {
-        userMessageText = input.trim() || '[이미지 업로드됨]';
-      }
-    } else if (selectedImage && extractedText) {
-      // 구조화된 데이터가 없어도 텍스트가 있으면 구조화 시도
-      // extractedText에서 정보 추출 시도 (예: "Coca-Cola 코카콜라 350 ml")
-      const parts = extractedText.split(/\s+/);
-      const infoParts = [];
-      
-      // 제조사 찾기 (영문 대문자로 시작)
-      const manufacturerMatch = parts.find(p => /^[A-Z][a-z]+(-[A-Z][a-z]+)*$/.test(p));
-      if (manufacturerMatch) {
-        infoParts.push(`제조사: ${manufacturerMatch}`);
-      }
-      
-      // 제품명 찾기 (한글)
-      const productMatch = parts.find(p => /^[가-힣]+$/.test(p));
-      if (productMatch) {
-        infoParts.push(`제품명: ${productMatch}`);
-      }
-      
-      // 사이즈 찾기 (숫자 + 단위)
-      const sizeMatch = parts.find(p => /\d+\s*(ml|mL|ML|L|l|g|kg|KG|cm|mm|m)/i.test(p));
-      if (sizeMatch) {
-        infoParts.push(`사이즈 또는 규격: ${sizeMatch}`);
-      }
-      
-      if (infoParts.length > 0) {
-        userMessageText = `[이미지에서 추출된 정보]\n${infoParts.join('\n')}${input.trim() ? '\n\n' + input.trim() : ''}`;
-      } else {
-        userMessageText = `[이미지에서 추출된 정보: ${extractedText}] ${input.trim()}`.trim();
-      }
+    if (selectedImage && extractedText) {
+      userMessageText = `[이미지 검색 결과]\n${extractedText}${input.trim() ? '\n\n' + input.trim() : ''}`;
+    } else {
+      userMessageText = input.trim() || '[이미지 업로드됨]';
     }
 
     const userMessage = {
@@ -951,11 +1057,30 @@ function AiLlmPage() {
     const startTime = Date.now();
 
     try {
+      // 이미지 검색 결과가 있으면 epdimg 엔드포인트 사용, 아니면 기존 tool 사용
+      const useEpdimg = selectedTool === 'chatbot' && extractedText;
+      
+      // 디버깅 로그
+      console.log('🔍 엔드포인트 결정 로직:');
+      console.log('  - selectedTool:', selectedTool);
+      console.log('  - extractedText 존재:', !!extractedText);
+      console.log('  - extractedText 길이:', extractedText ? extractedText.length : 0);
+      console.log('  - extractedText (첫 200자):', extractedText ? extractedText.substring(0, 200) : '없음');
+      console.log('  - useEpdimg:', useEpdimg);
+      console.log('  - 최종 tool:', useEpdimg ? 'epdimg' : selectedTool);
+      console.log('  - currentInput (첫 200자):', currentInput ? currentInput.substring(0, 200) : '없음');
+      
       const requestBody = {
         query: currentInput,
-        tool: selectedTool,
+        tool: useEpdimg ? 'epdimg' : selectedTool,
         with_answer: withAnswer
       };
+      
+      console.log('📤 요청 전송:', {
+        tool: requestBody.tool,
+        queryLength: requestBody.query ? requestBody.query.length : 0,
+        queryPreview: requestBody.query ? requestBody.query.substring(0, 100) : '없음'
+      });
 
       const response = await fetch('/api/chatmcp', {
         method: 'POST',
@@ -972,6 +1097,13 @@ function AiLlmPage() {
       const data = await response.json();
       
       // 디버깅을 위한 로깅
+      // epdimg 흐름일 때 1단계 LLM 추출 텍스트를 콘솔에 출력
+      if (useEpdimg) {
+        console.log('🔎 [STEP1] epdimg 추출 텍스트:', data?.extractedProductInfo || data?.response || '(없음)');
+        if (data?.epdimgResponse) {
+          console.log('🧩 [STEP1] epdimg 원본 응답:', data.epdimgResponse);
+        }
+      }
  
       
       // 응답 시간 계산
@@ -982,23 +1114,6 @@ function AiLlmPage() {
       let responseText;
       if (selectedTool === 'chatbot') {
         responseText = data.response || data.answer || 'Sorry, I could not process your request.';
-        
-        // 이미지 검색으로 추출된 제품 정보가 있으면 답변 앞에 추가
-        if (searchedProductInfo) {
-          const infoParts = [];
-          if (searchedProductInfo.productName) {
-            infoParts.push(`제품명: ${searchedProductInfo.productName}`);
-          }
-          if (searchedProductInfo.manufacturer) {
-            infoParts.push(`제조사: ${searchedProductInfo.manufacturer}`);
-          }
-          if (searchedProductInfo.size) {
-            infoParts.push(`사이즈: ${searchedProductInfo.size}`);
-          }
-          if (infoParts.length > 0) {
-            responseText = `[이미지 검색 결과: ${infoParts.join(', ')}]\n\n${responseText}`;
-          }
-        }
       } else if (selectedTool === 'embed' || selectedTool === 'nerp') {
         // embed 또는 nerp 응답 처리
         if (withAnswer && data.answer) {
@@ -1046,6 +1161,7 @@ function AiLlmPage() {
         sender: 'bot',
         text: responseText,
         responseTime: timeTaken,
+        evidence: data.evidence || [], // evidence 정보 저장
       };
       
       setMessages(prev => {
@@ -1439,8 +1555,8 @@ function AiLlmPage() {
                             </div>
                           )}
                           {msg.sender === 'bot' && selectedTool === 'nerp' 
-                            ? renderMessageText(msg.text, true)
-                            : <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            ? renderMessageText(msg.text, true, msg.evidence)
+                            : renderMessageText(msg.text, false, msg.evidence)
                           }
                         </>
                       )}
@@ -1489,7 +1605,12 @@ function AiLlmPage() {
                 {isExtractingImage && (
                   <div className="mt-2 text-xs text-gray-500">이미지에서 텍스트 추출 중...</div>
                 )}
-                {extractedImageData && (
+                {extractedImageText && (
+                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                    이미지 검색 결과: {extractedImageText.substring(0, 150)}{extractedImageText.length > 150 ? '...' : ''}
+                  </div>
+                )}
+                {!extractedImageText && extractedImageData && (
                   <div className="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded space-y-1">
                     {extractedImageData.productName && (
                       <div>제품명: <span className="font-semibold">{extractedImageData.productName}</span></div>
@@ -1500,11 +1621,6 @@ function AiLlmPage() {
                     {extractedImageData.size && (
                       <div>사이즈 또는 규격: <span className="font-semibold">{extractedImageData.size}</span></div>
                     )}
-                  </div>
-                )}
-                {!extractedImageData && extractedImageText && (
-                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                    추출된 정보: {extractedImageText.substring(0, 100)}{extractedImageText.length > 100 ? '...' : ''}
                   </div>
                 )}
               </div>

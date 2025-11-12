@@ -6,8 +6,6 @@ import { CheckCircle, AlertCircle, Circle, ArrowLeft, Layers } from 'lucide-reac
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
-// const API_BASE = process.env.NEXT_PUBLIC_RPA_API_BASE || process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8010';
-
 // 상태 스타일 정의
 const statusStylesByName = {
   '대기중': {
@@ -76,6 +74,11 @@ export default function ProjectDashboardPage() {
   const startIdx = (currentPage - 1) * logsPerPage;
   const currentLogs = filteredLines.slice(startIdx, startIdx + logsPerPage);
 
+  const pageGroupSize = 10; // 한 번에 표시할 페이지 버튼 개수
+  const currentGroup = Math.floor((currentPage - 1) / pageGroupSize); // 현재 구간 (0부터 시작)
+  const startPage = currentGroup * pageGroupSize + 1;
+  const endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
+
   // 프로젝트 이름 가져오기
   const fetchProjectName = async () => {
     try {
@@ -127,6 +130,37 @@ export default function ProjectDashboardPage() {
     setSearchTerm('');
   };
 
+  // 🔹 START 버튼 동작
+  const handleStart = async (log) => {
+    console.log("START 클릭됨:", log.id, "CMD:", log.CMD, "TYPE:", typeof log.CMD);
+    if (!log.CMD || log.CMD.trim() === '') {
+      alert('CMD 설정이 안돼있습니다.');
+      return;
+    }
+
+    if (log.STATUS_CODE !== 1000) {
+      alert('현재 상태에서는 실행할 수 없습니다.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/rpa/rpa_log/start/${log.id}`, { method: 'POST' });
+      const data = await res.json();
+
+      if (res.ok && data.status === 'started') {
+        alert('원격 실행이 시작되었습니다.');
+        const updated = rpaLogs.map((l) =>
+          l.id === log.id ? { ...l, STATUS_CODE: 1001 } : l
+        );
+        setRpaLogs(updated);
+      } else {
+        alert(data.detail || data.message || '실행 실패');
+      }
+    } catch (err) {
+      alert('서버 오류: ' + err.message);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen text-gray-500">
@@ -168,12 +202,12 @@ export default function ProjectDashboardPage() {
             return (
               <div
                 key={index}
-                onClick={() => handleLogClick(log)}
+                // onClick={() => handleLogClick(log)}
                 className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col cursor-pointer hover:shadow-md transition-all ${
                   selectedLog?.TITLE === log.TITLE ? 'ring-2 ring-blue-400' : ''
                 }`}
               >
-                <div className="p-5 flex-grow">
+                <div className="p-5 flex-grow" onClick={() => handleLogClick(log)}>
                   <h3 className="text-lg font-bold text-blue-600 truncate">{log.TITLE}</h3>
                   <div className="my-3">
                     <StatusBadge name={statusName} />
@@ -184,9 +218,24 @@ export default function ProjectDashboardPage() {
                   </p>
                 </div>
 
-                <div className="bg-[#6b7280] text-white text-center text-xs py-2 rounded-b-lg">
-                  START
-                </div>
+                {/* ✅ START 버튼은 별도 클릭 이벤트만 */}
+                <button
+                  onClick={() => handleStart(log)}
+                  disabled={log.STATUS_CODE !== 1000}
+                  className={`text-xs py-2 rounded-b-lg text-white w-full transition-colors ${
+                    log.STATUS_CODE === 1000
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : log.STATUS_CODE === 1001
+                      ? 'bg-green-500 cursor-default'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {log.STATUS_CODE === 1000
+                    ? 'START'
+                    : log.STATUS_CODE === 1001
+                    ? '실행중'
+                    : '비활성'}
+                </button>
               </div>
             );
           })}
@@ -260,7 +309,20 @@ export default function ProjectDashboardPage() {
                 {/* 페이지네이션 */}
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
-                    {/* 이전 */}
+                    {/* << 처음으로 */}
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-md border text-sm ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      ≪
+                    </button>
+
+                    {/* < 이전 */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                       disabled={currentPage === 1}
@@ -270,12 +332,12 @@ export default function ProjectDashboardPage() {
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                     >
-                      이전
+                      ＜
                     </button>
 
-                    {/* 페이지 번호 */}
-                    {Array.from({ length: totalPages }).map((_, i) => {
-                      const pageNum = i + 1;
+                    {/* 페이지 번호 (현재 구간) */}
+                    {Array.from({ length: endPage - startPage + 1 }).map((_, i) => {
+                      const pageNum = startPage + i;
                       return (
                         <button
                           key={pageNum}
@@ -291,7 +353,7 @@ export default function ProjectDashboardPage() {
                       );
                     })}
 
-                    {/* 다음 */}
+                    {/* > 다음 */}
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                       disabled={currentPage === totalPages}
@@ -301,7 +363,20 @@ export default function ProjectDashboardPage() {
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                     >
-                      다음
+                      ＞
+                    </button>
+
+                    {/* >> 마지막으로 */}
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-md border text-sm ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      ≫
                     </button>
                   </div>
                 )}

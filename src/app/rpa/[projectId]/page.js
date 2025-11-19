@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle, AlertCircle, Circle, ArrowLeft, Layers } from 'lucide-react';
+import { CheckCircle, AlertCircle, Circle, ArrowLeft, Layers, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/PageHeader';
 
@@ -60,6 +60,15 @@ export default function ProjectDashboardPage() {
   const [projectName, setProjectName] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  const [sshHost, setSshHost] = useState('');
+  const [sshUser, setSshUser] = useState('');
+  const [sshPass, setSshPass] = useState('');
+  const [cmd, setCmd] = useState('');
+
+
 
   const allLines = selectedLog?.LOG
     ? selectedLog.LOG.split('\n').filter((line) => line.trim() !== '')
@@ -96,6 +105,50 @@ export default function ProjectDashboardPage() {
     }
   };
 
+  const handleSaveSshInfo = async () => {
+      if (!editTarget) return;
+
+      const payload = {
+          ssh_host: sshHost,
+          ssh_user: sshUser,
+          ssh_password: sshPass,
+          CMD: cmd
+      };
+
+      try {
+          const res = await fetch(`/api/rpa/rpa_log/update_ssh/${editTarget.id}`, {
+              method: "PUT",
+              headers: {
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+              alert(data.detail || "저장 실패");
+              return;
+          }
+
+          alert("저장되었습니다.");
+
+          // UI 상태 업데이트
+          setRpaLogs((prev) =>
+              prev.map((log) =>
+                  log.id === editTarget.id
+                      ? { ...log, ...payload } // 변경된 SSH/CMD 반영
+                      : log
+              )
+          );
+
+          setShowModal(false);
+
+      } catch (err) {
+          alert("서버 오류: " + err.message);
+      }
+  };
+
   // RPA 로그 불러오기
   const fetchRpaLogs = async () => {
     try {
@@ -123,6 +176,15 @@ export default function ProjectDashboardPage() {
       fetchRpaLogs();
     }
   }, [projectId]);
+
+  useEffect(() => {
+    if (editTarget) {
+      setSshHost(editTarget.ssh_host || '');
+      setSshUser(editTarget.ssh_user || '');
+      setSshPass(editTarget.ssh_password || '');
+      setCmd(editTarget.CMD || '');
+    }
+  }, [editTarget]);
 
   const handleLogClick = (log) => {
     setSelectedLog(log);
@@ -207,7 +269,20 @@ export default function ProjectDashboardPage() {
                   selectedLog?.TITLE === log.TITLE ? 'ring-2 ring-blue-400' : ''
                 }`}
               >
-                <div className="p-5 flex-grow" onClick={() => handleLogClick(log)}>
+                <div className="p-5 flex-grow relative" onClick={() => handleLogClick(log)}>
+
+                  {/* 설정 버튼 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // 카드 클릭(로그 상세)와 이벤트 겹치지 않게!
+                      setEditTarget(log);
+                      setShowModal(true);
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-200 z-30"
+                  >
+                    <Settings size={18} className="text-gray-400" />
+                  </button>
+                  
                   <h3 className="text-lg font-bold text-blue-600 truncate">{log.TITLE}</h3>
                   <div className="my-3">
                     <StatusBadge name={statusName} />
@@ -217,7 +292,6 @@ export default function ProjectDashboardPage() {
                     {ts ? new Date(ts).toLocaleString('ko-KR') : '---'}
                   </p>
                 </div>
-
                 {/* ✅ START 버튼은 별도 클릭 이벤트만 */}
                 <button
                   onClick={() => handleStart(log)}
@@ -236,6 +310,71 @@ export default function ProjectDashboardPage() {
                     ? '실행중'
                     : '비활성'}
                 </button>
+
+                {showModal && (
+                  <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+                    <div className="bg-white w-[400px] rounded-xl shadow-lg p-6">
+
+                      <h2 className="text-xl font-bold mb-4">SSH / CMD 설정</h2>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-sm font-semibold">SSH Host</label>
+                          <input
+                            value={sshHost}
+                            onChange={(e) => setSshHost(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-semibold">SSH User</label>
+                          <input
+                            value={sshUser}
+                            onChange={(e) => setSshUser(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-semibold">SSH Password</label>
+                          <input
+                            type="password"
+                            value={sshPass}
+                            onChange={(e) => setSshPass(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-semibold">CMD</label>
+                          <textarea
+                            value={cmd}
+                            onChange={(e) => setCmd(e.target.value)}
+                            rows={3}
+                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 mt-6">
+                        <button
+                          onClick={() => setShowModal(false)}
+                          className="px-4 py-2 bg-gray-300 rounded-lg"
+                        >
+                          취소
+                        </button>
+
+                        <button
+                          onClick={() => handleSaveSshInfo()}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                        >
+                          저장
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

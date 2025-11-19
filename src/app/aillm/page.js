@@ -909,6 +909,7 @@ function AiLlmPage() {
   // 이미지 검색으로 검색 결과 텍스트 추출
   const searchImageForText = async (imageBase64) => {
     try {
+      setIsExtractingImage(true);
       console.log('🔍 이미지 검색 시작...');
       const response = await fetch('/api/image-search', {
         method: 'POST',
@@ -943,12 +944,14 @@ function AiLlmPage() {
       console.error('Image search error:', error);
       // 이미지 검색 실패는 치명적이지 않으므로 null 반환
       return null;
+    } finally {
+      setIsExtractingImage(false);
     }
   };
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if ((input.trim() === '' && !selectedImage) || isLoading) return;
+    if ((input.trim() === '' && !selectedImage) || isLoading || isExtractingImage) return;
 
     let sessionId = currentSessionId;
     

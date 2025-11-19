@@ -7,6 +7,15 @@ const EMB_API_BASE = process.env.EMB_API_BASE || 'http://221.139.227.131:8001';
 const GIT_API_BASE = process.env.GIT_API_BASE || 'http://221.139.227.131:8001';
 const TARGET_DIR = process.env.RAG_TARGET_DIR || '/home/siwasoft/siwasoft/mcp/pdf';
 
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '8mb',  // 필요하면 더 크게
+    },
+  },
+};
+
 // Git RAG 임베딩 처리 함수
 async function handleGitEmbedding(req, res, { git_id, collection }) {
   if (!git_id || !git_id.trim()) {

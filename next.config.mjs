@@ -8,6 +8,7 @@ const nextConfig = {
     EMB_API_DOMAIN: process.env.EMB_API_DOMAIN,
     OCR_API_BASE: process.env.OCR_API_BASE,
     OCR_API_DOMAIN: process.env.OCR_API_DOMAIN,
+    NEXT_PUBLIC_PDF_VIEWER_BASE: process.env.NEXT_PUBLIC_PDF_VIEWER_BASE,
   },
   
   // 이미지 도메인 설정 (IP와 도메인 모두 허용)

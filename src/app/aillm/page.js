@@ -354,13 +354,19 @@ function AiLlmPage() {
     const getPdfViewerBase = () => {
       if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
         // workbuilder.co.kr 도메인이면 IP 주소 사용
         if (hostname.includes('workbuilder.co.kr') || hostname.includes('vercel.app')) {
+          // 항상 IP 주소 사용 (혼합 콘텐츠 문제 방지)
+          return 'http://221.139.227.131:3000';
+        }
+        // 로컬 개발 환경에서도 IP 주소 사용 (일관성)
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
           return 'http://221.139.227.131:3000';
         }
       }
-      // 로컬 개발 환경이면 상대 경로 사용
-      return '';
+      // 기본값: IP 주소 사용
+      return 'http://221.139.227.131:3000';
     };
 
     // [출처: ...] 패턴 찾기

@@ -19,7 +19,7 @@ export default function PDFViewer() {
 
     // 페이지 번호를 URL에 포함 (페이지별 PDF 파일을 가져오기 위해)
     const pageNumber = currentPage ? parseInt(currentPage, 10) : 1;
-    // PDF API 기본 URL 결정: workbuilder.co.kr 도메인이면 IP 주소 사용
+    // PDF API 기본 URL 결정: 항상 IP 주소 사용
     const getApiBase = () => {
       if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
@@ -27,9 +27,13 @@ export default function PDFViewer() {
         if (hostname.includes('workbuilder.co.kr') || hostname.includes('vercel.app')) {
           return 'http://221.139.227.131:3000';
         }
+        // 로컬 개발 환경에서도 IP 주소 사용 (일관성)
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          return 'http://221.139.227.131:3000';
+        }
       }
-      // 로컬 개발 환경이면 상대 경로 사용
-      return '';
+      // 기본값: IP 주소 사용
+      return 'http://221.139.227.131:3000';
     };
     const apiBase = getApiBase();
     const pdfUrl = `${apiBase}/api/pdf-viewer?pdf_name=${encodeURIComponent(currentPdfName)}${pageNumber ? `&page=${pageNumber}` : ''}`;

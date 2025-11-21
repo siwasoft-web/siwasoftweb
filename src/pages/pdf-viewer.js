@@ -19,11 +19,22 @@ export default function PDFViewer() {
 
     // 페이지 번호를 URL에 포함 (페이지별 PDF 파일을 가져오기 위해)
     const pageNumber = currentPage ? parseInt(currentPage, 10) : 1;
-    // IP 주소를 사용하여 PDF API 호출
-    const apiBase = process.env.NEXT_PUBLIC_PDF_VIEWER_BASE || 'http://221.139.227.131:3000';
+    // PDF API 기본 URL 결정: workbuilder.co.kr 도메인이면 IP 주소 사용
+    const getApiBase = () => {
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        // workbuilder.co.kr 도메인이면 IP 주소 사용
+        if (hostname.includes('workbuilder.co.kr') || hostname.includes('vercel.app')) {
+          return 'http://221.139.227.131:3000';
+        }
+      }
+      // 로컬 개발 환경이면 상대 경로 사용
+      return '';
+    };
+    const apiBase = getApiBase();
     const pdfUrl = `${apiBase}/api/pdf-viewer?pdf_name=${encodeURIComponent(currentPdfName)}${pageNumber ? `&page=${pageNumber}` : ''}`;
     
-    console.log('📄 PDF 로드 시작:', { pdf_name: currentPdfName, pageNumber, pdfUrl });
+    console.log('📄 PDF 로드 시작:', { pdf_name: currentPdfName, pageNumber, pdfUrl, apiBase });
 
     pdfjsLib.getDocument({
       url: pdfUrl,

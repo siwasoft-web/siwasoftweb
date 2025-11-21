@@ -34,7 +34,6 @@ function AiLlmPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isExtractingImage, setIsExtractingImage] = useState(false);
-  const [extractedImageText, setExtractedImageText] = useState('');
   const [extractedImageData, setExtractedImageData] = useState(null); // 구조화된 데이터
   const fileInputRef = useRef(null);
 
@@ -883,7 +882,6 @@ function AiLlmPage() {
   const handleImageRemove = () => {
     setSelectedImage(null);
     setImagePreview(null);
-    setExtractedImageText('');
     setExtractedImageData(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -927,48 +925,6 @@ function AiLlmPage() {
     }
   };
 
-  // 이미지 검색으로 검색 결과 텍스트 추출
-  const searchImageForText = async (imageBase64) => {
-    try {
-      setIsExtractingImage(true);
-      console.log('🔍 이미지 검색 시작...');
-      const response = await fetch('/api/image-search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ imageBase64 })
-      });
-
-      if (!response.ok) {
-        console.warn('이미지 검색 실패:', response.status);
-        return null;
-      }
-
-      const data = await response.json();
-      console.log('이미지 검색 결과:', data);
-      
-      if (data.success && data.searchResultsText) {
-        // 검색 결과 텍스트 반환
-        return data.searchResultsText;
-      }
-      
-      // 이미지 검색 실패 시 로그 출력
-      if (!data.success) {
-        console.warn('⚠️ 이미지 검색 실패:', data.message || '알 수 없는 오류');
-      } else if (data.success && !data.searchResultsText) {
-        console.warn('⚠️ 이미지 검색 결과가 없습니다.');
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Image search error:', error);
-      // 이미지 검색 실패는 치명적이지 않으므로 null 반환
-      return null;
-    } finally {
-      setIsExtractingImage(false);
-    }
-  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -985,37 +941,13 @@ function AiLlmPage() {
       }
     }
 
-    // 이미지가 있으면 SERP API로 이미지 검색하여 검색 결과 텍스트 추출
-    let extractedText = '';
-    let imageSearchFailed = false;
-    if (selectedImage && imagePreview) {
-      // SERP API로 이미지 검색하여 검색 결과 텍스트 추출 (탄소배출량 모드일 때만)
-      if (selectedTool === 'chatbot') {
-        extractedText = await searchImageForText(imagePreview);
-        console.log('🔍 SERP API로 추출된 검색 결과 텍스트:', extractedText);
-        
-        if (extractedText) {
-          setExtractedImageText(extractedText);
-        } else {
-          imageSearchFailed = true;
-          console.warn('⚠️ 이미지 검색 결과가 없습니다. 사용자 입력 텍스트를 사용합니다.');
-        }
-      }
-    }
-
     // ===== 실제 검색 쿼리 구성 =====
-    // 검색에 사용되는 텍스트: SERP API로 추출된 검색 결과 텍스트 또는 사용자 입력
-    const searchQuery = extractedText || input.trim();
+    const searchQuery = input.trim();
     console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
     if (!searchQuery) {
-      alert('텍스트를 입력하거나 이미지를 업로드해주세요.\n\n이미지를 업로드했지만 정보가 추출되지 않았다면, 추가로 텍스트를 입력해주세요.');
+      alert('텍스트를 입력해주세요.');
       return;
-    }
-    
-    // 이미지 검색이 실패했고 사용자 입력도 없으면 경고
-    if (imageSearchFailed && !input.trim()) {
-      console.warn('⚠️ 이미지 검색 실패 및 사용자 입력 없음');
     }
 
     // 첫 메시지 전, 세션 제목을 즉시 업데이트 (ChatGPT 스타일)
@@ -1038,14 +970,7 @@ function AiLlmPage() {
     }
 
     // ===== 화면 표시용 메시지 구성 =====
-    // 이 텍스트는 화면에만 표시되고, 실제 검색에는 사용되지 않음
-    // 검색에는 위의 searchQuery가 사용됨
-    let userMessageText = input;
-    if (selectedImage && extractedText) {
-      userMessageText = `[이미지 검색 결과]\n${extractedText}${input.trim() ? '\n\n' + input.trim() : ''}`;
-    } else {
-      userMessageText = input.trim() || '[이미지 업로드됨]';
-    }
+    const userMessageText = input.trim() || '[이미지 업로드됨]';
 
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -1081,22 +1006,9 @@ function AiLlmPage() {
     const startTime = Date.now();
 
     try {
-      // 이미지 검색 결과가 있으면 epdimg 엔드포인트 사용, 아니면 기존 tool 사용
-      const useEpdimg = selectedTool === 'chatbot' && extractedText;
-      
-      // 디버깅 로그
-      console.log('🔍 엔드포인트 결정 로직:');
-      console.log('  - selectedTool:', selectedTool);
-      console.log('  - extractedText 존재:', !!extractedText);
-      console.log('  - extractedText 길이:', extractedText ? extractedText.length : 0);
-      console.log('  - extractedText (첫 200자):', extractedText ? extractedText.substring(0, 200) : '없음');
-      console.log('  - useEpdimg:', useEpdimg);
-      console.log('  - 최종 tool:', useEpdimg ? 'epdimg' : selectedTool);
-      console.log('  - currentInput (첫 200자):', currentInput ? currentInput.substring(0, 200) : '없음');
-      
       const requestBody = {
         query: currentInput,
-        tool: useEpdimg ? 'epdimg' : selectedTool,
+        tool: selectedTool,
         with_answer: withAnswer
       };
       
@@ -1119,16 +1031,6 @@ function AiLlmPage() {
       }
 
       const data = await response.json();
-      
-      // 디버깅을 위한 로깅
-      // epdimg 흐름일 때 1단계 LLM 추출 텍스트를 콘솔에 출력
-      if (useEpdimg) {
-        console.log('🔎 [STEP1] epdimg 추출 텍스트:', data?.extractedProductInfo || data?.response || '(없음)');
-        if (data?.epdimgResponse) {
-          console.log('🧩 [STEP1] epdimg 원본 응답:', data.epdimgResponse);
-        }
-      }
- 
       
       // 응답 시간 계산
       const endTime = Date.now();
@@ -1629,12 +1531,7 @@ function AiLlmPage() {
                 {isExtractingImage && (
                   <div className="mt-2 text-xs text-gray-500">이미지에서 텍스트 추출 중...</div>
                 )}
-                {extractedImageText && (
-                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                    이미지 검색 결과: {extractedImageText.substring(0, 150)}{extractedImageText.length > 150 ? '...' : ''}
-                  </div>
-                )}
-                {!extractedImageText && extractedImageData && (
+                {extractedImageData && (
                   <div className="mt-2 text-xs text-gray-700 bg-gray-50 p-2 rounded space-y-1">
                     {extractedImageData.productName && (
                       <div>제품명: <span className="font-semibold">{extractedImageData.productName}</span></div>

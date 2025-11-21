@@ -350,6 +350,19 @@ function AiLlmPage() {
       return text;
     }
 
+    // PDF 뷰어 기본 URL 결정: workbuilder.co.kr 도메인이면 IP 주소 사용
+    const getPdfViewerBase = () => {
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        // workbuilder.co.kr 도메인이면 IP 주소 사용
+        if (hostname.includes('workbuilder.co.kr') || hostname.includes('vercel.app')) {
+          return 'http://221.139.227.131:3000';
+        }
+      }
+      // 로컬 개발 환경이면 상대 경로 사용
+      return '';
+    };
+
     // [출처: ...] 패턴 찾기
     const sourcePattern = /\[출처:\s*([^\]]+)\]/g;
     const parts = [];
@@ -466,7 +479,8 @@ function AiLlmPage() {
         });
         
         if (foundPdfName) {
-          const pdfUrl = `/pdf-viewer?pdf_name=${encodeURIComponent(foundPdfName)}${foundPage ? `&page=${foundPage}` : ''}`;
+          const baseUrl = getPdfViewerBase();
+          const pdfUrl = `${baseUrl}/pdf-viewer?pdf_name=${encodeURIComponent(foundPdfName)}${foundPage ? `&page=${foundPage}` : ''}`;
           console.log('🔗 PDF URL:', pdfUrl);
           parts.push(
             <a
@@ -493,7 +507,8 @@ function AiLlmPage() {
         // 예: "WorkBuilder 사용자 매뉴얼" -> "WorkBuilder 사용자 매뉴얼"
         console.log('⚠️ Evidence 매칭 실패, 출처 텍스트에서 직접 추출 시도:', pdfNameText);
         if (pdfNameText) {
-          const pdfUrl = `/pdf-viewer?pdf_name=${encodeURIComponent(pdfNameText)}${pageNum ? `&page=${pageNum}` : ''}`;
+          const baseUrl = getPdfViewerBase();
+          const pdfUrl = `${baseUrl}/pdf-viewer?pdf_name=${encodeURIComponent(pdfNameText)}${pageNum ? `&page=${pageNum}` : ''}`;
           console.log('🔗 PDF URL (직접 추출):', pdfUrl);
           parts.push(
             <a

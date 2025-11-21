@@ -19,7 +19,9 @@ export default function PDFViewer() {
 
     // 페이지 번호를 URL에 포함 (페이지별 PDF 파일을 가져오기 위해)
     const pageNumber = currentPage ? parseInt(currentPage, 10) : 1;
-    const pdfUrl = `/api/pdf-viewer?pdf_name=${encodeURIComponent(currentPdfName)}${pageNumber ? `&page=${pageNumber}` : ''}`;
+    // IP 주소를 사용하여 PDF API 호출
+    const apiBase = process.env.NEXT_PUBLIC_PDF_VIEWER_BASE || 'http://221.139.227.131:3000';
+    const pdfUrl = `${apiBase}/api/pdf-viewer?pdf_name=${encodeURIComponent(currentPdfName)}${pageNumber ? `&page=${pageNumber}` : ''}`;
     
     console.log('📄 PDF 로드 시작:', { pdf_name: currentPdfName, pageNumber, pdfUrl });
 

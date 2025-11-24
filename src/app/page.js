@@ -126,8 +126,9 @@ function Home() {
             </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">RPA 프로젝트를 시작해보세요</h3>
             <p className="text-sm text-gray-500 mb-6">
-              아직 등록된 프로젝트가 없습니다.<br />
-              시와소프트에 문의 부탁드립니다.
+              제품 및 관련 상담은 아래로 연락 부탁드립니다.<br />
+              Email. sales@siwasoft.co.kr<br/>
+              Phone. 02-6332-0111
             </p>
             {/* <Link
               href="/rpa/create" // 프로젝트 생성 페이지 또는 관리자 링크

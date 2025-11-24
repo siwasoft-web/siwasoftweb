@@ -945,8 +945,9 @@ function AiLlmPage() {
     const searchQuery = input.trim();
     console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
-    if (!searchQuery) {
-      alert('텍스트를 입력해주세요.');
+    // 탄소배출량 모드에서 이미지만 있는 경우는 허용
+    if (!searchQuery && !selectedImage) {
+      alert('텍스트를 입력하거나 이미지를 업로드해주세요.');
       return;
     }
 
@@ -1006,31 +1007,143 @@ function AiLlmPage() {
     const startTime = Date.now();
 
     try {
-      const requestBody = {
-        query: currentInput,
-        tool: selectedTool,
-        with_answer: withAnswer
+      // 탄소배출량 모드에서 이미지가 있으면 epdimg로 전환
+      const actualTool = (selectedTool === 'chatbot' && selectedImage) ? 'epdimg' : selectedTool;
+      
+      // epdimg 모드일 때는 이미지를 base64로 인코딩하여 전송
+      let requestBody;
+      let headers = {
+        'Content-Type': 'application/json',
       };
       
-      console.log('📤 요청 전송:', {
-        tool: requestBody.tool,
-        queryLength: requestBody.query ? requestBody.query.length : 0,
-        queryPreview: requestBody.query ? requestBody.query.substring(0, 100) : '없음'
+      if (actualTool === 'epdimg' && selectedImage) {
+        console.log('🖼️ 이미지 base64 변환 시작...', {
+          fileName: selectedImage.name,
+          fileSize: selectedImage.size,
+          fileType: selectedImage.type
+        });
+        
+        // 이미지를 base64로 변환
+        const imageBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            try {
+              // data:image/jpeg;base64, 부분 제거
+              const base64 = reader.result.split(',')[1];
+              console.log('✅ Base64 변환 완료, 길이:', base64.length);
+              resolve(base64);
+            } catch (error) {
+              console.error('❌ Base64 변환 오류:', error);
+              reject(error);
+            }
+          };
+          reader.onerror = (error) => {
+            console.error('❌ FileReader 오류:', error);
+            reject(error);
+          };
+          reader.readAsDataURL(selectedImage);
+        });
+        
+        requestBody = {
+          tool: actualTool,
+          imageBase64: imageBase64,
+          imageName: selectedImage.name,
+          imageType: selectedImage.type,
+          query: currentInput || ''
+        };
+        
+        console.log('📦 요청 바디 준비 완료:', {
+          tool: actualTool,
+          hasImageBase64: !!imageBase64,
+          imageBase64Length: imageBase64.length,
+          imageName: selectedImage.name,
+          imageType: selectedImage.type,
+          query: currentInput || ''
+        });
+      } else {
+        // 기존 방식 (JSON)
+        requestBody = {
+          query: currentInput || '',
+          tool: actualTool,
+          with_answer: withAnswer
+        };
+      }
+      
+      console.log('📤 요청 전송 시작:', {
+        tool: actualTool,
+        hasImage: !!selectedImage,
+        queryLength: currentInput ? currentInput.length : 0,
+        queryPreview: currentInput ? currentInput.substring(0, 100) : '없음',
+        requestBodySize: JSON.stringify(requestBody).length
       });
 
-      const response = await fetch('/api/chatmcp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+      // 타임아웃 설정 (10분)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.error('⏱️ 요청 타임아웃 (10분)');
+        controller.abort();
+      }, 10 * 60 * 1000);
+
+      let response;
+      try {
+        response = await fetch('/api/chatmcp', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('❌ Fetch 오류:', {
+          name: fetchError.name,
+          message: fetchError.message,
+          stack: fetchError.stack
+        });
+        if (fetchError.name === 'AbortError') {
+          throw new Error('요청 시간 초과 (10분). 서버가 응답하지 않습니다.');
+        }
+        throw new Error(`네트워크 오류: ${fetchError.message}`);
+      }
+
+      console.log('📥 응답 받음:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get response from ${selectedTool}`);
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = '응답 본문을 읽을 수 없습니다.';
+        }
+        console.error('❌ 응답 오류:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText: errorText.substring(0, 500)
+        });
+        throw new Error(`서버 오류 (${response.status}): ${errorText.substring(0, 200)}`);
       }
 
-      const data = await response.json();
+      console.log('📥 JSON 파싱 시작...');
+      let data;
+      try {
+        const responseText = await response.text();
+        console.log('📥 Raw response (첫 500자):', responseText.substring(0, 500));
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ JSON 파싱 오류:', parseError);
+        throw new Error(`응답 파싱 실패: ${parseError.message}`);
+      }
+      
+      console.log('✅ JSON 파싱 완료:', {
+        hasResponse: !!data.response,
+        hasChatbotResult: !!data.chatbot_result,
+        keys: Object.keys(data)
+      });
       
       // 응답 시간 계산
       const endTime = Date.now();
@@ -1038,8 +1151,13 @@ function AiLlmPage() {
       setResponseTime(timeTaken);
       
       let responseText;
-      if (selectedTool === 'chatbot') {
-        responseText = data.response || data.answer || 'Sorry, I could not process your request.';
+      if (selectedTool === 'chatbot' || actualTool === 'epdimg') {
+        // epdimg 모드일 때는 response 필드를 우선 사용 (app.py에서 이미 최종 답변 반환)
+        if (actualTool === 'epdimg') {
+          responseText = data.response || data.chatbot_result?.response || data.answer || 'Sorry, I could not process your request.';
+        } else {
+          responseText = data.response || data.answer || 'Sorry, I could not process your request.';
+        }
       } else if (selectedTool === 'embed' || selectedTool === 'nerp') {
         // embed 또는 nerp 응답 처리
         if (withAnswer && data.answer) {
@@ -1112,10 +1230,17 @@ function AiLlmPage() {
       stopThinkingAnimation();
       
       // "생각 중입니다" 메시지 제거하고 에러 메시지 추가
+      let errorMessage = `에러가 발생했습니다: ${error.message}`;
+      
+      // 응답이 있지만 JSON 파싱 실패한 경우
+      if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
+        errorMessage = '서버 응답 형식 오류가 발생했습니다. 서버 로그를 확인해주세요.';
+      }
+      
       const errorResponse = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
-        text: `에러가 발생했습니다: ${error.message}. 서버가 실행 중인지 확인해주세요.`,
+        text: `${errorMessage} 서버가 실행 중인지 확인해주세요.`,
       };
       
       setMessages(prev => {

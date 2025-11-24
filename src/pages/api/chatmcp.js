@@ -227,32 +227,39 @@ export default async function handler(req, res) {
       console.log('FastAPI response headers:', response.headers);
     }
 
+    // Response body를 한 번만 읽기 위해 먼저 텍스트로 변환
+    let responseText;
+    try {
+      responseText = typeof response.text === 'function' ? await response.text() : response.text;
+      console.log('📥 Raw response (첫 500자):', responseText ? responseText.substring(0, 500) : '비어있음');
+    } catch (textError) {
+      console.error('❌ Response text 읽기 오류:', textError);
+      throw new Error(`응답 읽기 실패: ${textError.message}`);
+    }
+
     if (!response.ok) {
-      const errorText = typeof response.text === 'function' ? await response.text() : response.text;
-      console.error('❌ FastAPI error response:', errorText);
+      console.error('❌ FastAPI error response:', responseText);
       console.error('❌ Error status:', response.status);
-      throw new Error(`Backend API error: ${response.status} - ${errorText}`);
+      throw new Error(`Backend API error: ${response.status} - ${responseText}`);
+    }
+
+    if (!responseText) {
+      throw new Error('응답이 비어있습니다.');
     }
 
     let data;
     try {
-      // response.text()가 함수인 경우 (fetch Response)와 이미 문자열인 경우 처리
-      const responseText = typeof response.text === 'function' ? await response.text() : response.text;
-      console.log('📥 Raw response (첫 500자):', responseText.substring(0, 500));
-      if (!responseText) {
-        throw new Error('응답이 비어있습니다.');
-      }
       // response.json()이 함수인 경우와 이미 파싱된 객체인 경우 처리
       if (typeof response.json === 'function') {
-        data = await response.json();
+        // 이미 text()를 호출했으므로 json()은 사용할 수 없음
+        data = JSON.parse(responseText);
       } else {
         data = JSON.parse(responseText);
       }
       console.log('✅ JSON 파싱 완료');
     } catch (parseError) {
       console.error('❌ JSON 파싱 오류:', parseError);
-      const responseText = typeof response.text === 'function' ? await response.text() : (response.text || '');
-      console.error('❌ Response text:', responseText.substring(0, 500));
+      console.error('❌ Response text:', responseText ? responseText.substring(0, 500) : '비어있음');
       throw new Error(`응답 파싱 실패: ${parseError.message}`);
     }
     

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSidebar } from '@/context/SidebarContext';
 import { BarChart2, Zap, Bot, ScanSearch, HelpCircle, Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
-import Image from 'next/image';
 import siwasoftCi from '@/assets/siwasoft_ci.png';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -26,7 +25,7 @@ const Sidebar = () => {
   return (
     <div className={`flex flex-col bg-white h-100% min-h-screen p-4 shadow-xl transition-all duration-300 ${isOpen ? 'w-64 min-w-64' : 'w-20 min-w-20'}`}>
       <div className={`flex items-center ${isOpen ? 'justify-between' : 'justify-center'} mb-10`}>
-        {isOpen && <Image src={siwasoftCi} alt="Siwasoft Logo" width={120} height={34} />}
+        {isOpen && <img src={siwasoftCi.src || siwasoftCi} alt="Siwasoft Logo" style={{ width: '120px', height: 'auto' }} />}
         <button onClick={() => setIsOpen(!isOpen)} className="p-1 rounded-md hover:bg-gray-100 cursor-pointer">
           {isOpen ? <ChevronLeft /> : <ChevronRight />}
         </button>

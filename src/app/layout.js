@@ -13,12 +13,11 @@ export default function RootLayout({ children }) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith('/auth');
   const particlesInit = useCallback(async engine => {
-    console.log(engine);
     await loadSlim(engine);
   }, []);
 
   const particlesLoaded = useCallback(async container => {
-    await console.log(container);
+    // Particles loaded
   }, []);
 
   return (

@@ -11,18 +11,7 @@ const faqs = [
     question: 'RPA 프로젝트는 어떻게 생성하나요?',
     answer: 'RPA Analyst 페이지 우측 상단에 있는 "+ 프로젝트 생성" 버튼을 클릭하여 새로운 RPA 프로젝트를 시작할 수 있습니다. 필요한 정보를 입력하고 템플릿을 선택하면 프로젝트가 생성됩니다.',
   },
-  {
-    question: 'AI OCR은 어떤 파일 형식을 지원하나요?',
-    answer: '현재 AI OCR 기능은 PDF, PNG, JPG, WEBP 형식의 파일을 지원합니다. 최대 파일 크기는 10MB입니다.',
-  },
-  {
-    question: 'AI LLM과의 대화 내역은 저장되나요?',
-    answer: '네, AI LLM과의 대화는 자동으로 저장되어 "Conversations" 목록에서 언제든지 다시 확인하고 이어갈 수 있습니다.',
-  },
-  {
-    question: '분석 결과 데이터는 어떻게 내보내나요?',
-    answer: '각 프로젝트의 대시보드에서 "Export" 기능을 통해 분석 결과를 CSV 또는 Excel 파일 형태로 내보낼 수 있습니다.',
-  },
+
 ];
 
 const manuals = [
@@ -33,20 +22,7 @@ const manuals = [
     fileType: 'PDF',
     size: '5.4 MB',
   },
-  {
-    title: 'AI OCR API 연동 가이드',
-    version: 'v1.5.2',
-    description: '외부 시스템과 AI OCR 기능을 연동하기 위한 개발자용 API 가이드 문서입니다.',
-    fileType: 'PDF',
-    size: '2.1 MB',
-  },
-  {
-    title: 'AI LLM 활용 사례집',
-    version: 'v1.0.0',
-    description: '다양한 산업 분야에서 AI LLM을 성공적으로 활용한 실제 사례들을 소개합니다.',
-    fileType: 'PDF',
-    size: '8.9 MB',
-  },
+
 ];
 
 const notices = [

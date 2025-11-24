@@ -382,10 +382,6 @@ function AiLlmPage() {
 
       let sourceText = match[1].trim();
       
-      // 디버깅: 출처 텍스트와 evidence 로그
-      console.log('🔍 원본 출처 텍스트:', sourceText);
-      console.log('📚 Evidence:', evidence);
-      
       // 컬렉션 이름 제거: [docs agent], [collection_name] 등 (앞뒤 모두)
       // "[docs agent] WorkBuilder 사용자 매뉴얼 - p.4" -> "WorkBuilder 사용자 매뉴얼 - p.4"
       // "[docs agent]. WorkBuilder 사용자 매뉴얼 p.5" -> "WorkBuilder 사용자 매뉴얼 p.5"
@@ -393,7 +389,6 @@ function AiLlmPage() {
         .replace(/^\[[^\]]+\]\s*\.?\s*/g, '') // 앞의 [docs agent]. 제거
         .replace(/\s*\[[^\]]+\]\s*/g, ' ') // 중간이나 뒤의 [docs agent] 제거
         .trim();
-      console.log('🔍 컬렉션 이름 제거 후:', sourceText);
       
       // 출처 텍스트에서 PDF 이름과 페이지 번호 추출
       // 형식: "WorkBuilder 사용자 매뉴얼 - p.4", "WorkBuilder 사용자 매뉴얼 p.5, p.7", "WorkBuilder 사용자 매뉴얼ㆍ p.96" 등
@@ -408,7 +403,6 @@ function AiLlmPage() {
                        sourceText.match(/\sp\.(\d+)/i);
       if (pageMatch) {
         pageNum = parseInt(pageMatch[1], 10);
-        console.log('📄 출처 텍스트에서 페이지 번호 추출:', pageNum);
       }
       
       // PDF 이름 추출 (페이지 번호 부분 제거)
@@ -422,8 +416,6 @@ function AiLlmPage() {
         .replace(/\s*,\s*$/, '') // 끝의 , 제거
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
         .trim();
-      
-      console.log('📄 추출된 PDF 이름:', pdfNameText, '페이지 번호:', pageNum);
       
       // evidence에서 매칭되는 항목 찾기 (유연한 매칭)
       let evidenceItem = null;
@@ -476,17 +468,9 @@ function AiLlmPage() {
         // evidence의 페이지 번호는 fallback으로만 사용
         const foundPage = pageNum || evidenceItem.page || evidenceItem.meta?.page;
         
-        console.log('✅ Evidence 매칭 성공:', { 
-          foundPdfName, 
-          foundPage, 
-          pageNumFromText: pageNum,
-          pageNumFromEvidence: evidenceItem.page || evidenceItem.meta?.page
-        });
-        
         if (foundPdfName) {
           const baseUrl = getPdfViewerBase();
           const pdfUrl = `${baseUrl}/pdf-viewer?pdf_name=${encodeURIComponent(foundPdfName)}${foundPage ? `&page=${foundPage}` : ''}`;
-          console.log('🔗 PDF URL:', pdfUrl);
           parts.push(
             <a
               key={match.index}
@@ -510,11 +494,9 @@ function AiLlmPage() {
       } else {
         // evidence를 찾지 못한 경우, 출처 텍스트에서 직접 PDF 이름 추출 시도
         // 예: "WorkBuilder 사용자 매뉴얼" -> "WorkBuilder 사용자 매뉴얼"
-        console.log('⚠️ Evidence 매칭 실패, 출처 텍스트에서 직접 추출 시도:', pdfNameText);
         if (pdfNameText) {
           const baseUrl = getPdfViewerBase();
           const pdfUrl = `${baseUrl}/pdf-viewer?pdf_name=${encodeURIComponent(pdfNameText)}${pageNum ? `&page=${pageNum}` : ''}`;
-          console.log('🔗 PDF URL (직접 추출):', pdfUrl);
           parts.push(
             <a
               key={match.index}
@@ -629,7 +611,6 @@ function AiLlmPage() {
       const response = await fetch('/api/chat-sessions');
       const data = await response.json();
       if (data.success) {
-        console.log('Fetched sessions:', data.sessions);
         setChatSessions(data.sessions);
       }
     } catch (error) {
@@ -640,7 +621,6 @@ function AiLlmPage() {
   const createNewSession = async () => {
     try {
       setIsCreatingSession(true);
-      console.log('Creating new session...');
       
       const response = await fetch('/api/chat-sessions', {
         method: 'POST',
@@ -653,9 +633,6 @@ function AiLlmPage() {
         })
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API Error:', errorText);
@@ -663,7 +640,6 @@ function AiLlmPage() {
       }
       
       const data = await response.json();
-      console.log('Session created:', data);
       
       if (data.success) {
         setChatSessions(prev => [data.session, ...prev]);
@@ -799,7 +775,6 @@ function AiLlmPage() {
       
       const data = await response.json();
       if (data.success) {
-        console.log('Database cleaned:', data.message);
         setChatSessions([]);
         setCurrentSessionId(null);
         setMessages([]);
@@ -905,7 +880,6 @@ function AiLlmPage() {
       }
 
       const data = await response.json();
-      console.log('Vision API 응답:', data); // 디버깅용
       // 구조화된 데이터 저장
       setExtractedImageData(data.formatted || null);
       // 구조화된 데이터와 텍스트 모두 반환
@@ -943,7 +917,6 @@ function AiLlmPage() {
 
     // ===== 실제 검색 쿼리 구성 =====
     const searchQuery = input.trim();
-    console.log('🔍 실제 검색 쿼리:', searchQuery); // 디버깅용
 
     // 탄소배출량 모드에서 이미지만 있는 경우는 허용
     if (!searchQuery && !selectedImage) {
@@ -1017,12 +990,6 @@ function AiLlmPage() {
       };
       
       if (actualTool === 'epdimg' && selectedImage) {
-        console.log('🖼️ 이미지 base64 변환 시작...', {
-          fileName: selectedImage.name,
-          fileSize: selectedImage.size,
-          fileType: selectedImage.type
-        });
-        
         // 이미지를 base64로 변환
         const imageBase64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -1030,7 +997,6 @@ function AiLlmPage() {
             try {
               // data:image/jpeg;base64, 부분 제거
               const base64 = reader.result.split(',')[1];
-              console.log('✅ Base64 변환 완료, 길이:', base64.length);
               resolve(base64);
             } catch (error) {
               console.error('❌ Base64 변환 오류:', error);
@@ -1051,15 +1017,6 @@ function AiLlmPage() {
           imageType: selectedImage.type,
           query: currentInput || ''
         };
-        
-        console.log('📦 요청 바디 준비 완료:', {
-          tool: actualTool,
-          hasImageBase64: !!imageBase64,
-          imageBase64Length: imageBase64.length,
-          imageName: selectedImage.name,
-          imageType: selectedImage.type,
-          query: currentInput || ''
-        });
       } else {
         // 기존 방식 (JSON)
         requestBody = {
@@ -1068,14 +1025,6 @@ function AiLlmPage() {
           with_answer: withAnswer
         };
       }
-      
-      console.log('📤 요청 전송 시작:', {
-        tool: actualTool,
-        hasImage: !!selectedImage,
-        queryLength: currentInput ? currentInput.length : 0,
-        queryPreview: currentInput ? currentInput.substring(0, 100) : '없음',
-        requestBodySize: JSON.stringify(requestBody).length
-      });
 
       // 타임아웃 설정 (10분)
       const controller = new AbortController();
@@ -1106,13 +1055,6 @@ function AiLlmPage() {
         throw new Error(`네트워크 오류: ${fetchError.message}`);
       }
 
-      console.log('📥 응답 받음:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
       if (!response.ok) {
         let errorText = '';
         try {
@@ -1128,22 +1070,14 @@ function AiLlmPage() {
         throw new Error(`서버 오류 (${response.status}): ${errorText.substring(0, 200)}`);
       }
 
-      console.log('📥 JSON 파싱 시작...');
       let data;
       try {
         const responseText = await response.text();
-        console.log('📥 Raw response (첫 500자):', responseText.substring(0, 500));
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('❌ JSON 파싱 오류:', parseError);
         throw new Error(`응답 파싱 실패: ${parseError.message}`);
       }
-      
-      console.log('✅ JSON 파싱 완료:', {
-        hasResponse: !!data.response,
-        hasChatbotResult: !!data.chatbot_result,
-        keys: Object.keys(data)
-      });
       
       // 응답 시간 계산
       const endTime = Date.now();

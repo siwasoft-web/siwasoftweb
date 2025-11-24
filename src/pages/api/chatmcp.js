@@ -8,25 +8,13 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  console.log('=== ChatMCP API called ===');
-  console.log('Method:', req.method);
-  console.log('Content-Type:', req.headers['content-type']);
-  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    console.log('📥 JSON body 파싱 시작...');
-    console.log('📥 Content-Length:', req.headers['content-length']);
-    
     // Next.js Pages Router에서는 bodyParser 설정 시 req.body가 자동으로 파싱됨
     let body = req.body;
-    
-    console.log('📥 req.body 존재 여부:', !!body);
-    console.log('📥 req.body 타입:', typeof body);
-    console.log('📥 req.body 키:', body ? Object.keys(body) : []);
-    console.log('📥 req.body 내용 (첫 200자):', body ? JSON.stringify(body).substring(0, 200) : '없음');
     
     // body가 없거나 빈 객체인 경우 에러
     if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
@@ -40,15 +28,6 @@ export default async function handler(req, res) {
     }
     
     const { query, tool, with_answer, imageBase64, imageName, imageType } = body;
-    
-    console.log('📥 ChatMCP API 요청 받음:');
-    console.log('  - tool:', tool);
-    console.log('  - hasImage:', !!imageBase64);
-    console.log('  - imageBase64 길이:', imageBase64 ? imageBase64.length : 0);
-    console.log('  - imageName:', imageName);
-    console.log('  - imageType:', imageType);
-    console.log('  - query:', query || '없음');
-    console.log('  - with_answer:', with_answer);
 
     if (!tool || !['chatbot', 'embed', 'gitagent', 'nerp', 'epdimg'].includes(tool)) {
       console.error('❌ 잘못된 tool:', tool);
@@ -66,8 +45,6 @@ export default async function handler(req, res) {
       console.error('❌ 이미지 데이터가 없습니다.');
       return res.status(400).json({ error: 'Image data is required for epdimg mode' });
     }
-    
-    console.log('✅ 요청 검증 통과, tool:', tool);
 
     // FastAPI 백엔드 엔드포인트 결정 (환경 변수 우선, fallback으로 IP 사용)
     const endpoint = tool === 'chatbot' ? '/chatbot' 
@@ -78,15 +55,12 @@ export default async function handler(req, res) {
                    : '/chatbot';
     const baseUrl = process.env.API_BASE_URL || 'http://221.139.227.131:8000';
     const url = `${baseUrl}${endpoint}`;
-    console.log('Calling FastAPI endpoint:', url);
 
     // epdimg 모드일 때는 FormData로 이미지 전송
     let response;
     if (tool === 'epdimg' && imageBase64) {
-      console.log('🖼️ EPDIMG 모드 - FormData 준비 시작...');
       try {
         const FormData = require('form-data');
-        console.log('✅ form-data 모듈 로드 성공');
         
         const formData = new FormData();
         
@@ -95,35 +69,22 @@ export default async function handler(req, res) {
           throw new Error('이미지 데이터가 비어있습니다.');
         }
         
-        console.log('🔄 Base64를 Buffer로 변환 중...');
         const imageBuffer = Buffer.from(imageBase64, 'base64');
         if (imageBuffer.length === 0) {
           throw new Error('이미지 버퍼 변환 실패');
         }
-        console.log('✅ Buffer 변환 완료, 크기:', imageBuffer.length);
         
         formData.append('file', imageBuffer, {
           filename: imageName || 'image.jpg',
           contentType: imageType || 'image/jpeg'
         });
-        console.log('✅ 파일 필드 추가 완료');
         
         // 텍스트가 있으면 함께 전송
         if (query) {
           formData.append('query', query);
-          console.log('✅ 쿼리 필드 추가 완료:', query);
         }
         
-        console.log('📤 EPDIMG로 이미지 전송 시작:', {
-          filename: imageName,
-          mimetype: imageType,
-          size: imageBuffer.length,
-          hasQuery: !!query,
-          url: url
-        });
-        
         const headers = formData.getHeaders();
-        console.log('📤 FormData headers:', JSON.stringify(headers, null, 2));
         
         // Node.js의 fetch는 form-data 패키지와 직접 호환되지 않을 수 있음
         // 따라서 form-data를 스트림으로 전송하거나, 다른 HTTP 클라이언트 사용
@@ -184,8 +145,6 @@ export default async function handler(req, res) {
           // form-data 스트림을 요청에 파이프
           formData.pipe(req);
         });
-        
-        console.log('✅ HTTP 요청 완료, 상태:', response.status);
       } catch (formDataError) {
         console.error('❌ FormData 전송 오류:', formDataError);
         console.error('❌ Error name:', formDataError.name);
@@ -208,8 +167,6 @@ export default async function handler(req, res) {
         body.append('with_answer', with_answer ? 'true' : 'false');
       }
 
-      console.log('Request body params:', body.toString());
-
       response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -219,19 +176,10 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log('FastAPI response status:', response.status);
-    // response.headers가 일반 객체인 경우와 Headers 객체인 경우 처리
-    if (response.headers && typeof response.headers.entries === 'function') {
-      console.log('FastAPI response headers:', Object.fromEntries(response.headers.entries()));
-    } else {
-      console.log('FastAPI response headers:', response.headers);
-    }
-
     // Response body를 한 번만 읽기 위해 먼저 텍스트로 변환
     let responseText;
     try {
       responseText = typeof response.text === 'function' ? await response.text() : response.text;
-      console.log('📥 Raw response (첫 500자):', responseText ? responseText.substring(0, 500) : '비어있음');
     } catch (textError) {
       console.error('❌ Response text 읽기 오류:', textError);
       throw new Error(`응답 읽기 실패: ${textError.message}`);
@@ -256,20 +204,15 @@ export default async function handler(req, res) {
       } else {
         data = JSON.parse(responseText);
       }
-      console.log('✅ JSON 파싱 완료');
     } catch (parseError) {
       console.error('❌ JSON 파싱 오류:', parseError);
       console.error('❌ Response text:', responseText ? responseText.substring(0, 500) : '비어있음');
       throw new Error(`응답 파싱 실패: ${parseError.message}`);
     }
     
-    // 디버깅을 위한 로깅
-    console.log(`${tool.toUpperCase()} API Response:`, JSON.stringify(data, null, 2));
-    
     // epdimg 모드일 때: app.py의 /epdimg는 이미 chatbot_seq_logic을 호출하여 최종 답변을 반환
     // 따라서 추가 처리 없이 그대로 반환
     if (tool === 'epdimg') {
-      console.log('✅ EPDIMG 응답 받음 (이미 최종 답변 포함):', JSON.stringify(data, null, 2));
       // app.py에서 반환하는 형식: { success, extracted_text, chatbot_result, response, ... }
       // response 필드에 최종 답변이 있으므로 그대로 반환
       return res.status(200).json(data);
